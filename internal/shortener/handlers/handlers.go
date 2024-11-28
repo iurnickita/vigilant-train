@@ -74,5 +74,5 @@ func (h *handlers) SetShortener(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusCreated)
 	w.Header().Add("Content-Type", "text/plain")
-	io.WriteString(w, fmt.Sprintf("%s/%s", h.addr, resp.Code))
+	io.WriteString(w, fmt.Sprintf("http://%s/%s", h.addr, resp.Code))
 }
