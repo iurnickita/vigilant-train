@@ -64,6 +64,8 @@ func TestShortener(t *testing.T) {
 			assert.Equal(t, http.StatusTemporaryRedirect, getresult.StatusCode)
 			getresultlocation := getresult.Header.Values("Location")
 			assert.Equal(t, getresultlocation[0], test.url)
+			err = getresult.Body.Close() // * зачем
+			require.NoError(t, err)
 		})
 	}
 
