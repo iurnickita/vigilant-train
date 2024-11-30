@@ -59,6 +59,7 @@ func TestShortener(t *testing.T) {
 			require.NoError(t, err, "Ошибка отправки запроса Get")
 			statuscode := getresp.StatusCode
 			location := getresp.Header.Values("Location")[0]
+			getresp.Body.Close()
 
 			require.Equal(t, http.StatusTemporaryRedirect, statuscode)
 			require.Equal(t, tc.url, location[0])
