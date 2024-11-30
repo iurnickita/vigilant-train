@@ -10,6 +10,8 @@ import (
 )
 
 func TestShortener(t *testing.T) {
+	const DefaultServerAddr = "http://localhost:8080"
+
 	testCases := []struct {
 		name string
 		url  string
@@ -33,7 +35,7 @@ func TestShortener(t *testing.T) {
 			// запрос короткой ссылки
 			setreq := resty.New().R()
 			setreq.Method = http.MethodPost
-			setreq.URL = "http://localhost:8080"
+			setreq.URL = DefaultServerAddr
 			setreq.Body = tc.url
 			setresp, err := setreq.Send()
 			require.NoError(t, err, "Ошибка отправки запроса Post")
@@ -42,27 +44,15 @@ func TestShortener(t *testing.T) {
 			require.Equal(t, http.StatusCreated, setresp.StatusCode())
 
 			// переход по короткой ссылке
-			getrequrl := string(setresp.Body())
-
-			// resty
-			// тупит по непонятной причине. Возвращает пустой 200
-			/* 			getreq := resty.New().R()
-			   			getresp, err := getreq.Get(getrequrl)
-			   			require.NoError(t, err, "Ошибка отправки запроса Get")
-			   			// обработка ответа * ничего не понятно . Точка в хендлере GetShortener срабатывает, возвращает 301. Тут получаю 200
-			   			statuscode := getresp.StatusCode()
-			   			location := getresp.Header().Values("Location")*/
-
-			// net/http
-			// а тут то же самое
-			getresp, err := http.Get(getrequrl)
+			getreq := resty.New().R()
+			getresp, err := getreq.Get(string(setresp.Body()))
 			require.NoError(t, err, "Ошибка отправки запроса Get")
-			statuscode := getresp.StatusCode
-			location := getresp.Header.Values("Location")[0]
-			getresp.Body.Close()
 
-			require.Equal(t, http.StatusTemporaryRedirect, statuscode)
-			require.Equal(t, tc.url, location[0])
+			// обработка ответа
+			require.Equal(t, http.StatusOK, getresp.StatusCode())
+			resulturl := getresp.RawResponse.Request.URL.Scheme +
+				"://" + getresp.RawResponse.Request.URL.Host + "/"
+			require.Equal(t, tc.url, resulturl)
 		})
 	}
 }
