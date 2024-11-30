@@ -5,13 +5,14 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/iurnickita/vigilant-train/internal/shortener/handlers/config"
 	"github.com/iurnickita/vigilant-train/internal/shortener/service"
 )
 
 func Serve(cfg config.Config, shortener Shortener) error {
 	h := newHandlers(shortener, cfg.ServerAddr)
-	router := newRouter(h)
+	router, _ := newRouter(h)
 
 	srv := &http.Server{
 		Addr:    cfg.ServerAddr,
@@ -21,12 +22,14 @@ func Serve(cfg config.Config, shortener Shortener) error {
 	return srv.ListenAndServe()
 }
 
-func newRouter(h *handlers) *http.ServeMux {
+func newRouter(h *handlers) (*http.ServeMux, *chi.Mux) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /{code}", h.GetShortener)
 	mux.HandleFunc("POST /", h.SetShortener)
 
-	return mux
+	chi := chi.NewRouter() // dummy
+
+	return mux, chi
 }
 
 type Shortener interface {
