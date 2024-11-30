@@ -48,7 +48,7 @@ func TestShortener(t *testing.T) {
 			assert.Equal(t, http.StatusCreated, setresult.StatusCode)
 			setresultbody, err := io.ReadAll(setresult.Body)
 			require.NoError(t, err)
-			err = setresult.Body.Close() // * зачем
+			err = setresult.Body.Close()
 			require.NoError(t, err)
 
 			// переход по короткой ссылке
@@ -64,7 +64,7 @@ func TestShortener(t *testing.T) {
 			assert.Equal(t, http.StatusTemporaryRedirect, getresult.StatusCode)
 			getresultlocation := getresult.Header.Values("Location")
 			assert.Equal(t, getresultlocation[0], test.url)
-			err = getresult.Body.Close() // * зачем
+			err = getresult.Body.Close()
 			require.NoError(t, err)
 		})
 	}
