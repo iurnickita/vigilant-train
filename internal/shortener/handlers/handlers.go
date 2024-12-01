@@ -11,7 +11,7 @@ import (
 )
 
 func Serve(cfg config.Config, shortener Shortener) error {
-	h := newHandlers(shortener, cfg.ServerAddr)
+	h := newHandlers(shortener, cfg.BaseAddr)
 	router, _ := newRouter(h)
 
 	srv := &http.Server{
@@ -39,13 +39,13 @@ type Shortener interface {
 
 type handlers struct {
 	shortener Shortener
-	addr      string
+	baseaddr  string
 }
 
-func newHandlers(shortener Shortener, addr string) *handlers {
+func newHandlers(shortener Shortener, baseaddr string) *handlers {
 	return &handlers{
 		shortener: shortener,
-		addr:      addr,
+		baseaddr:  baseaddr,
 	}
 }
 
@@ -77,5 +77,5 @@ func (h *handlers) SetShortener(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusCreated)
 	w.Header().Add("Content-Type", "text/plain")
-	io.WriteString(w, fmt.Sprintf("http://%s/%s", h.addr, resp.Code))
+	io.WriteString(w, fmt.Sprintf("http://%s/%s", h.baseaddr, resp.Code))
 }

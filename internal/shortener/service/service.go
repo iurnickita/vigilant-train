@@ -32,9 +32,6 @@ var (
 )
 
 func (s *Shortener) GetShortener(req *GetShortenerRequest) (*GetShortenerResponse, error) {
-	if err := getShortenerValidateRequest(req); err != nil {
-		return nil, err
-	}
 
 	repositoryResp, err := s.store.GetShortener(&repository.GetShortenerRequest{
 		Code: req.Code,
@@ -48,10 +45,6 @@ func (s *Shortener) GetShortener(req *GetShortenerRequest) (*GetShortenerRespons
 	return &GetShortenerResponse{
 		URL: repositoryResp.URL,
 	}, nil
-}
-
-func getShortenerValidateRequest(req *GetShortenerRequest) error {
-	return nil
 }
 
 type SetShortenerRequest struct {

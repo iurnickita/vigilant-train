@@ -7,7 +7,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/iurnickita/vigilant-train/internal/shortener/config"
 	"github.com/iurnickita/vigilant-train/internal/shortener/repository"
 	"github.com/iurnickita/vigilant-train/internal/shortener/service"
 
@@ -15,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestShortener(t *testing.T) {
+func TestHandlers(t *testing.T) {
 	tests := []struct {
 		name string
 		url  string
@@ -29,10 +28,9 @@ func TestShortener(t *testing.T) {
 		},
 	}
 
-	cfg := config.GetConfig()
 	store := repository.NewStore()
 	shortenerService := service.NewShortener(store)
-	h := newHandlers(shortenerService, cfg.Handlers.ServerAddr)
+	h := newHandlers(shortenerService, "localhost:8080")
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
