@@ -3,6 +3,7 @@ package config
 import (
 	"flag"
 	"os"
+	"strings"
 
 	handlersConfig "github.com/iurnickita/vigilant-train/internal/shortener/handlers/config"
 )
@@ -24,6 +25,11 @@ func GetConfig() Config {
 	if envbase := os.Getenv("BASE_URL"); envbase != "" {
 		cfg.Handlers.BaseAddr = envbase
 	}
+
+	cfg.Handlers.ServerAddr = strings.TrimPrefix(cfg.Handlers.ServerAddr, "http://")
+	cfg.Handlers.ServerAddr = strings.TrimPrefix(cfg.Handlers.ServerAddr, "http//")
+	cfg.Handlers.BaseAddr = strings.TrimPrefix(cfg.Handlers.ServerAddr, "http://")
+	cfg.Handlers.BaseAddr = strings.TrimPrefix(cfg.Handlers.ServerAddr, "http//")
 
 	return cfg
 }
