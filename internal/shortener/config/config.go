@@ -28,8 +28,8 @@ func GetConfig() Config {
 
 	cfg.Handlers.ServerAddr = strings.TrimPrefix(cfg.Handlers.ServerAddr, "http://")
 	cfg.Handlers.ServerAddr = strings.TrimPrefix(cfg.Handlers.ServerAddr, "http//")
-	cfg.Handlers.BaseAddr = strings.TrimPrefix(cfg.Handlers.ServerAddr, "http://")
-	cfg.Handlers.BaseAddr = strings.TrimPrefix(cfg.Handlers.ServerAddr, "http//")
+	cfg.Handlers.BaseAddr = strings.TrimPrefix(cfg.Handlers.BaseAddr, "http://")
+	cfg.Handlers.BaseAddr = strings.TrimPrefix(cfg.Handlers.BaseAddr, "http//")
 
 	return cfg
 }
