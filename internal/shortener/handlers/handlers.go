@@ -57,6 +57,7 @@ func (h *handlers) GetShortener(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		http.Error(w, "", http.StatusBadRequest)
+		return
 	}
 
 	http.Redirect(w, r, resp.URL, http.StatusTemporaryRedirect)
