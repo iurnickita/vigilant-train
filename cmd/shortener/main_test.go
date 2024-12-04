@@ -2,15 +2,21 @@ package main
 
 import (
 	"net/http"
+	"os"
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/go-resty/resty/v2"
+
+	netutils "github.com/iurnickita/vigilant-train/internal/common/net_utils"
 )
 
 func TestShortener(t *testing.T) {
-	const DefaultServerAddr = "http://localhost:8080"
+	freePort, err := netutils.GetFreePort()
+	require.NoError(t, err, "Ошибка получения свободного порта")
+	var ServerAddr = "http://localhost:" + strconv.Itoa(freePort)
 
 	testCases := []struct {
 		name string
@@ -26,7 +32,9 @@ func TestShortener(t *testing.T) {
 	}
 
 	// Запуск сервера
-	// * непонятно как в такой ситуации подставить httptest.NewServer
+	oldArgs := os.Args
+	defer func() { os.Args = oldArgs }()
+	os.Args = []string{"", "-a", ServerAddr, "-b", ServerAddr}
 	go main()
 
 	for _, tc := range testCases {
@@ -35,7 +43,7 @@ func TestShortener(t *testing.T) {
 			// запрос короткой ссылки
 			setreq := resty.New().R()
 			setreq.Method = http.MethodPost
-			setreq.URL = DefaultServerAddr
+			setreq.URL = ServerAddr
 			setreq.Body = tc.url
 			setresp, err := setreq.Send()
 			require.NoError(t, err, "Ошибка отправки запроса Post")
