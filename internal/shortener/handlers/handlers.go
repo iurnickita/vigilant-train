@@ -67,6 +67,7 @@ func (h *handlers) SetShortener(w http.ResponseWriter, r *http.Request) {
 	url, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, "", http.StatusBadRequest)
+		return
 	}
 
 	resp, err := h.shortener.SetShortener(&service.SetShortenerRequest{
