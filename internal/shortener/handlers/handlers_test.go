@@ -10,7 +10,6 @@ import (
 	"github.com/iurnickita/vigilant-train/internal/shortener/repository"
 	"github.com/iurnickita/vigilant-train/internal/shortener/service"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -43,7 +42,7 @@ func TestHandlers(t *testing.T) {
 
 			// обработка ответа
 			setresult := setw.Result()
-			assert.Equal(t, http.StatusCreated, setresult.StatusCode)
+			require.Equal(t, http.StatusCreated, setresult.StatusCode)
 			setresultbody, err := io.ReadAll(setresult.Body)
 			require.NoError(t, err)
 			err = setresult.Body.Close()
@@ -59,9 +58,9 @@ func TestHandlers(t *testing.T) {
 
 			// обработка ответа
 			getresult := getw.Result()
-			assert.Equal(t, http.StatusTemporaryRedirect, getresult.StatusCode)
+			require.Equal(t, http.StatusTemporaryRedirect, getresult.StatusCode)
 			getresultlocation := getresult.Header.Values("Location")
-			assert.Equal(t, getresultlocation[0], test.url)
+			require.Equal(t, getresultlocation[0], test.url)
 			err = getresult.Body.Close()
 			require.NoError(t, err)
 		})
