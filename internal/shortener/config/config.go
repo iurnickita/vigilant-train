@@ -6,10 +6,12 @@ import (
 	"strings"
 
 	handlersConfig "github.com/iurnickita/vigilant-train/internal/shortener/handlers/config"
+	loggerConfig "github.com/iurnickita/vigilant-train/internal/shortener/logger/config"
 )
 
 type Config struct {
 	Handlers handlersConfig.Config
+	Logger   loggerConfig.Config
 }
 
 func GetConfig() Config {
@@ -17,6 +19,7 @@ func GetConfig() Config {
 
 	flag.StringVar(&cfg.Handlers.ServerAddr, "a", "localhost:8080", "address of HTTP server")
 	flag.StringVar(&cfg.Handlers.BaseAddr, "b", "localhost:8080", "address of short URL")
+	flag.StringVar(&cfg.Logger.LogLevel, "l", "info", "log level")
 	flag.Parse()
 
 	if envsrv := os.Getenv("SERVER_ADDRESS"); envsrv != "" {
@@ -25,7 +28,11 @@ func GetConfig() Config {
 	if envbase := os.Getenv("BASE_URL"); envbase != "" {
 		cfg.Handlers.BaseAddr = envbase
 	}
+	if envbase := os.Getenv("LOG_LEVEL"); envbase != "" {
+		cfg.Logger.LogLevel = envbase
+	}
 
+	// костыль для кривых данных
 	cfg.Handlers.ServerAddr = strings.TrimPrefix(cfg.Handlers.ServerAddr, "http://")
 	cfg.Handlers.ServerAddr = strings.TrimPrefix(cfg.Handlers.ServerAddr, "http//")
 	cfg.Handlers.BaseAddr = strings.TrimPrefix(cfg.Handlers.BaseAddr, "http://")

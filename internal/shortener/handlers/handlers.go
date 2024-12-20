@@ -7,12 +7,14 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/iurnickita/vigilant-train/internal/shortener/handlers/config"
+	"github.com/iurnickita/vigilant-train/internal/shortener/logger"
 	"github.com/iurnickita/vigilant-train/internal/shortener/service"
+	"go.uber.org/zap"
 )
 
-func Serve(cfg config.Config, shortener Shortener) error {
-	h := newHandlers(shortener, cfg.BaseAddr)
-	router, _ := newRouter(h)
+func Serve(cfg config.Config, shortener Shortener, zaplog *zap.Logger) error {
+	h := newHandlers(shortener, cfg.BaseAddr, zaplog)
+	router, _ := h.newRouter()
 
 	srv := &http.Server{
 		Addr:    cfg.ServerAddr,
@@ -20,16 +22,6 @@ func Serve(cfg config.Config, shortener Shortener) error {
 	}
 
 	return srv.ListenAndServe()
-}
-
-func newRouter(h *handlers) (*http.ServeMux, *chi.Mux) {
-	mux := http.NewServeMux()
-	mux.HandleFunc("GET /{code}", h.GetShortener)
-	mux.HandleFunc("POST /", h.SetShortener)
-
-	chi := chi.NewRouter() // dummy
-
-	return mux, chi
 }
 
 type Shortener interface {
@@ -40,13 +32,25 @@ type Shortener interface {
 type handlers struct {
 	shortener Shortener
 	baseaddr  string
+	zaplog    *zap.Logger
 }
 
-func newHandlers(shortener Shortener, baseaddr string) *handlers {
+func newHandlers(shortener Shortener, baseaddr string, zaplog *zap.Logger) *handlers {
 	return &handlers{
 		shortener: shortener,
 		baseaddr:  baseaddr,
+		zaplog:    zaplog,
 	}
+}
+
+func (h *handlers) newRouter() (*http.ServeMux, *chi.Mux) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /{code}", logger.RequestLogMdlw(h.GetShortener, h.zaplog))
+	mux.HandleFunc("POST /", logger.RequestLogMdlw(h.SetShortener, h.zaplog))
+
+	chi := chi.NewRouter() // dummy
+
+	return mux, chi
 }
 
 func (h *handlers) GetShortener(w http.ResponseWriter, r *http.Request) {
