@@ -86,7 +86,6 @@ func (h *handlers) SetShortener(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusCreated)
-	w.Header().Set("Content-Type", "text/plain")
 	io.WriteString(w, fmt.Sprintf("http://%s/%s", h.baseaddr, resp.Code))
 }
 
@@ -129,7 +128,7 @@ func (h *handlers) SetShortenerJSON(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.WriteHeader(http.StatusCreated)
 	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
 	w.Write(respJSON)
 }
