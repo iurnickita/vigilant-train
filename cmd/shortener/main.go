@@ -31,3 +31,4 @@ func run() error {
 }
 
 // curl -v -X POST -d https://practicum.yandex.ru/ http://localhost:8080/
+// curl --json '{"url": "https://practicum.yandex.ru"}' http://localhost:8080/api/shorten

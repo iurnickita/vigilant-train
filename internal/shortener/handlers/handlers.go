@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -47,6 +49,7 @@ func (h *handlers) newRouter() (*http.ServeMux, *chi.Mux) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /{code}", logger.RequestLogMdlw(h.GetShortener, h.zaplog))
 	mux.HandleFunc("POST /", logger.RequestLogMdlw(h.SetShortener, h.zaplog))
+	mux.HandleFunc("POST /api/shorten", logger.RequestLogMdlw(h.SetShortenerJSON, h.zaplog))
 
 	chi := chi.NewRouter() // dummy
 
@@ -60,7 +63,7 @@ func (h *handlers) GetShortener(w http.ResponseWriter, r *http.Request) {
 		Code: code,
 	})
 	if err != nil {
-		http.Error(w, "", http.StatusBadRequest)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -70,7 +73,7 @@ func (h *handlers) GetShortener(w http.ResponseWriter, r *http.Request) {
 func (h *handlers) SetShortener(w http.ResponseWriter, r *http.Request) {
 	url, err := io.ReadAll(r.Body)
 	if err != nil {
-		http.Error(w, "", http.StatusBadRequest)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -78,11 +81,55 @@ func (h *handlers) SetShortener(w http.ResponseWriter, r *http.Request) {
 		URL: string(url),
 	})
 	if err != nil {
-		http.Error(w, "", http.StatusBadRequest)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	w.WriteHeader(http.StatusCreated)
 	w.Header().Add("Content-Type", "text/plain")
 	io.WriteString(w, fmt.Sprintf("http://%s/%s", h.baseaddr, resp.Code))
+}
+
+type RawUrlJson struct {
+	Url string `json:"url"`
+}
+
+type ShortUrlJson struct {
+	Result string `json:"result"`
+}
+
+func (h *handlers) SetShortenerJSON(w http.ResponseWriter, r *http.Request) {
+	var buf bytes.Buffer
+	_, err := buf.ReadFrom(r.Body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	var rawUrl RawUrlJson
+	err = json.Unmarshal(buf.Bytes(), &rawUrl)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	resp, err := h.shortener.SetShortener(&service.SetShortenerRequest{
+		URL: rawUrl.Url,
+	})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	var shortUrl ShortUrlJson
+	shortUrl.Result = fmt.Sprintf("http://%s/%s", h.baseaddr, resp.Code)
+	respJson, err := json.Marshal(shortUrl)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	w.WriteHeader(http.StatusCreated)
+	w.Header().Add("Content-Type", "application/json")
+	w.Write(respJson)
 }
