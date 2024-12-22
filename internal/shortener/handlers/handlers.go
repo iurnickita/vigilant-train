@@ -90,11 +90,11 @@ func (h *handlers) SetShortener(w http.ResponseWriter, r *http.Request) {
 	io.WriteString(w, fmt.Sprintf("http://%s/%s", h.baseaddr, resp.Code))
 }
 
-type RawUrlJson struct {
-	Url string `json:"url"`
+type RawURLJSON struct {
+	URL string `json:"url"`
 }
 
-type ShortUrlJson struct {
+type ShortURLJSON struct {
 	Result string `json:"result"`
 }
 
@@ -106,24 +106,24 @@ func (h *handlers) SetShortenerJSON(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var rawUrl RawUrlJson
-	err = json.Unmarshal(buf.Bytes(), &rawUrl)
+	var rawURL RawURLJSON
+	err = json.Unmarshal(buf.Bytes(), &rawURL)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	resp, err := h.shortener.SetShortener(&service.SetShortenerRequest{
-		URL: rawUrl.Url,
+		URL: rawURL.URL,
 	})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	var shortUrl ShortUrlJson
-	shortUrl.Result = fmt.Sprintf("http://%s/%s", h.baseaddr, resp.Code)
-	respJson, err := json.Marshal(shortUrl)
+	var shortURL ShortURLJSON
+	shortURL.Result = fmt.Sprintf("http://%s/%s", h.baseaddr, resp.Code)
+	respJSON, err := json.Marshal(shortURL)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -131,5 +131,5 @@ func (h *handlers) SetShortenerJSON(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusCreated)
 	w.Header().Add("Content-Type", "application/json")
-	w.Write(respJson)
+	w.Write(respJSON)
 }
