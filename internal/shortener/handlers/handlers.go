@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/iurnickita/vigilant-train/internal/shortener/gzip"
 	"github.com/iurnickita/vigilant-train/internal/shortener/handlers/config"
 	"github.com/iurnickita/vigilant-train/internal/shortener/logger"
 	"github.com/iurnickita/vigilant-train/internal/shortener/service"
@@ -47,9 +48,9 @@ func newHandlers(shortener Shortener, baseaddr string, zaplog *zap.Logger) *hand
 
 func (h *handlers) newRouter() (*http.ServeMux, *chi.Mux) {
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /{code}", logger.RequestLogMdlw(h.GetShortener, h.zaplog))
-	mux.HandleFunc("POST /", logger.RequestLogMdlw(h.SetShortener, h.zaplog))
-	mux.HandleFunc("POST /api/shorten", logger.RequestLogMdlw(h.SetShortenerJSON, h.zaplog))
+	mux.HandleFunc("GET /{code}", logger.RequestLogMdlw(gzip.GzipMiddleware(h.GetShortener), h.zaplog))
+	mux.HandleFunc("POST /", logger.RequestLogMdlw(gzip.GzipMiddleware(h.SetShortener), h.zaplog))
+	mux.HandleFunc("POST /api/shorten", logger.RequestLogMdlw(gzip.GzipMiddleware(h.SetShortenerJSON), h.zaplog))
 
 	chi := chi.NewRouter() // dummy
 
