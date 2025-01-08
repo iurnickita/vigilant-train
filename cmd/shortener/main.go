@@ -24,7 +24,11 @@ func run() error {
 		return err
 	}
 
-	store := repository.NewStore()
+	store, err := repository.NewStore(cfg.Repository)
+	if err != nil {
+		return err
+	}
+
 	shortenerService := service.NewShortener(store)
 
 	return handlers.Serve(cfg.Handlers, shortenerService, zaplog)
