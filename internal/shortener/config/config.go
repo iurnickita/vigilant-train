@@ -39,7 +39,7 @@ func GetConfig() Config {
 		cfg.Repository.StoreType = envstore
 	}
 	if envstore := os.Getenv("FILE_STORAGE_PATH"); envstore != "" {
-		cfg.Repository.StoreType = envstore
+		cfg.Repository.Filename = envstore
 	}
 
 	// костыль для кривых данных
