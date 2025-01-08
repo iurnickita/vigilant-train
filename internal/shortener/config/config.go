@@ -22,7 +22,7 @@ func GetConfig() Config {
 	flag.StringVar(&cfg.Handlers.ServerAddr, "a", "localhost:8080", "address of HTTP server")
 	flag.StringVar(&cfg.Handlers.BaseAddr, "b", "localhost:8080", "address of short URL")
 	flag.StringVar(&cfg.Logger.LogLevel, "l", "info", "log level")
-	flag.StringVar(&cfg.Repository.StoreType, "s", repositoryConfig.StoreTypeFile, "store type: 0 Var, 1 File (default)")
+	flag.StringVar(&cfg.Repository.StoreType, "s", repositoryConfig.StoreTypeFile, "storage type: 0 Var, 1 File (default)")
 	flag.StringVar(&cfg.Repository.Filename, "f", repositoryConfig.DefaultFilename, "filename (if s = 1)")
 	flag.Parse()
 
@@ -35,10 +35,10 @@ func GetConfig() Config {
 	if envlevel := os.Getenv("LOG_LEVEL"); envlevel != "" {
 		cfg.Logger.LogLevel = envlevel
 	}
-	if envstore := os.Getenv("STORE_TYPE"); envstore != "" {
+	if envstore := os.Getenv("STORAGE_TYPE"); envstore != "" {
 		cfg.Repository.StoreType = envstore
 	}
-	if envstore := os.Getenv("STORE_FILE"); envstore != "" {
+	if envstore := os.Getenv("FILE_STORAGE_PATH"); envstore != "" {
 		cfg.Repository.StoreType = envstore
 	}
 
