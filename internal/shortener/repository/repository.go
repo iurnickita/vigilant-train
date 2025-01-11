@@ -50,7 +50,7 @@ func NewStore(cfg config.Config) (Repository, error) {
 			return NewStoreFile(cfg)
 		}
 	case config.StoreTypeDB:
-		if cfg.DB_DSN != "" {
+		if cfg.DbDsn != "" {
 			return NewStoreDB(cfg)
 		}
 	}

@@ -10,5 +10,5 @@ const (
 type Config struct {
 	StoreType string
 	Filename  string
-	DB_DSN    string
+	DbDsn     string
 }
