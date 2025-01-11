@@ -61,3 +61,7 @@ func (s *Shortener) SetShortener(req *SetShortenerRequest) (*SetShortenerRespons
 
 	return &SetShortenerResponse{Code: code}, nil
 }
+
+func (s *Shortener) Ping() error {
+	return s.store.Ping()
+}

@@ -30,6 +30,7 @@ func Serve(cfg config.Config, shortener Shortener, zaplog *zap.Logger) error {
 type Shortener interface {
 	GetShortener(req *service.GetShortenerRequest) (*service.GetShortenerResponse, error)
 	SetShortener(req *service.SetShortenerRequest) (*service.SetShortenerResponse, error)
+	Ping() error
 }
 
 type handlers struct {
@@ -51,6 +52,7 @@ func (h *handlers) newRouter() (*http.ServeMux, *chi.Mux) {
 	mux.HandleFunc("GET /{code}", logger.RequestLogMdlw(gzip.GzipMiddleware(h.GetShortener), h.zaplog))
 	mux.HandleFunc("POST /", logger.RequestLogMdlw(gzip.GzipMiddleware(h.SetShortener), h.zaplog))
 	mux.HandleFunc("POST /api/shorten", logger.RequestLogMdlw(gzip.GzipMiddleware(h.SetShortenerJSON), h.zaplog))
+	mux.HandleFunc("GET /ping", h.Ping)
 
 	chi := chi.NewRouter() // dummy
 
@@ -132,4 +134,12 @@ func (h *handlers) SetShortenerJSON(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	w.Write(respJSON)
+}
+
+func (h *handlers) Ping(w http.ResponseWriter, r *http.Request) {
+	err := h.shortener.Ping()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+	w.WriteHeader(http.StatusOK)
 }

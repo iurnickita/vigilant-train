@@ -22,8 +22,7 @@ func GetConfig() Config {
 	flag.StringVar(&cfg.Handlers.ServerAddr, "a", "localhost:8080", "address of HTTP server")
 	flag.StringVar(&cfg.Handlers.BaseAddr, "b", "localhost:8080", "address of short URL")
 	flag.StringVar(&cfg.Logger.LogLevel, "l", "info", "log level")
-	flag.StringVar(&cfg.Repository.StoreType, "s", repositoryConfig.StoreTypeFile, "storage type: 0 Var, 1 File (default)")
-	flag.StringVar(&cfg.Repository.Filename, "f", repositoryConfig.DefaultFilename, "filename (if s = 1)")
+	flag.StringVar(&cfg.Repository.Filename, "f", "", "file path")
 	flag.Parse()
 
 	if envsrv := os.Getenv("SERVER_ADDRESS"); envsrv != "" {
@@ -35,11 +34,19 @@ func GetConfig() Config {
 	if envlevel := os.Getenv("LOG_LEVEL"); envlevel != "" {
 		cfg.Logger.LogLevel = envlevel
 	}
-	if envstore := os.Getenv("STORAGE_TYPE"); envstore != "" {
-		cfg.Repository.StoreType = envstore
+	if envspath := os.Getenv("FILE_STORAGE_PATH"); envspath != "" {
+		cfg.Repository.Filename = envspath
 	}
-	if envstore := os.Getenv("FILE_STORAGE_PATH"); envstore != "" {
-		cfg.Repository.Filename = envstore
+	if envdbase := os.Getenv("DATABASE_DSN"); envdbase != "" {
+		cfg.Repository.DB_DSN = envdbase
+	}
+
+	if cfg.Repository.Filename != "" {
+		cfg.Repository.StoreType = repositoryConfig.StoreTypeFile
+	} else if cfg.Repository.DB_DSN != "" {
+		cfg.Repository.StoreType = repositoryConfig.StoreTypeDB
+	} else {
+		cfg.Repository.StoreType = repositoryConfig.StoreTypeVar
 	}
 
 	// костыль для кривых данных
