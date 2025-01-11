@@ -23,7 +23,7 @@ func GetConfig() Config {
 	flag.StringVar(&cfg.Handlers.BaseAddr, "b", "localhost:8080", "address of short URL")
 	flag.StringVar(&cfg.Logger.LogLevel, "l", "info", "log level")
 	flag.StringVar(&cfg.Repository.Filename, "f", "", "file path")
-	flag.StringVar(&cfg.Repository.DbDsn, "d", "", "database dsn")
+	flag.StringVar(&cfg.Repository.DBDsn, "d", "", "database dsn")
 	flag.Parse()
 
 	if envsrv := os.Getenv("SERVER_ADDRESS"); envsrv != "" {
@@ -39,12 +39,12 @@ func GetConfig() Config {
 		cfg.Repository.Filename = envspath
 	}
 	if envdbase := os.Getenv("DATABASE_DSN"); envdbase != "" {
-		cfg.Repository.DbDsn = envdbase
+		cfg.Repository.DBDsn = envdbase
 	}
 
 	if cfg.Repository.Filename != "" {
 		cfg.Repository.StoreType = repositoryConfig.StoreTypeFile
-	} else if cfg.Repository.DbDsn != "" {
+	} else if cfg.Repository.DBDsn != "" {
 		cfg.Repository.StoreType = repositoryConfig.StoreTypeDB
 	} else {
 		cfg.Repository.StoreType = repositoryConfig.StoreTypeVar

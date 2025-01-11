@@ -9,7 +9,7 @@ import (
 	"os"
 	"sync"
 
-	_ "github.com/jackc/pgx"
+	_ "github.com/jackc/pgx/v5/stdlib"
 
 	"github.com/iurnickita/vigilant-train/internal/shortener/repository/config"
 )
@@ -50,7 +50,7 @@ func NewStore(cfg config.Config) (Repository, error) {
 			return NewStoreFile(cfg)
 		}
 	case config.StoreTypeDB:
-		if cfg.DbDsn != "" {
+		if cfg.DBDsn != "" {
 			return NewStoreDB(cfg)
 		}
 	}
