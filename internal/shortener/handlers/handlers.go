@@ -1,18 +1,23 @@
 package handlers
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/iurnickita/vigilant-train/internal/shortener/gzip"
 	"github.com/iurnickita/vigilant-train/internal/shortener/handlers/config"
+	"github.com/iurnickita/vigilant-train/internal/shortener/logger"
 	"github.com/iurnickita/vigilant-train/internal/shortener/service"
+	"go.uber.org/zap"
 )
 
-func Serve(cfg config.Config, shortener Shortener) error {
-	h := newHandlers(shortener, cfg.BaseAddr)
-	router, _ := newRouter(h)
+func Serve(cfg config.Config, shortener Shortener, zaplog *zap.Logger) error {
+	h := newHandlers(shortener, cfg.BaseAddr, zaplog)
+	router, _ := h.newRouter()
 
 	srv := &http.Server{
 		Addr:    cfg.ServerAddr,
@@ -20,16 +25,6 @@ func Serve(cfg config.Config, shortener Shortener) error {
 	}
 
 	return srv.ListenAndServe()
-}
-
-func newRouter(h *handlers) (*http.ServeMux, *chi.Mux) {
-	mux := http.NewServeMux()
-	mux.HandleFunc("GET /{code}", h.GetShortener)
-	mux.HandleFunc("POST /", h.SetShortener)
-
-	chi := chi.NewRouter() // dummy
-
-	return mux, chi
 }
 
 type Shortener interface {
@@ -40,13 +35,26 @@ type Shortener interface {
 type handlers struct {
 	shortener Shortener
 	baseaddr  string
+	zaplog    *zap.Logger
 }
 
-func newHandlers(shortener Shortener, baseaddr string) *handlers {
+func newHandlers(shortener Shortener, baseaddr string, zaplog *zap.Logger) *handlers {
 	return &handlers{
 		shortener: shortener,
 		baseaddr:  baseaddr,
+		zaplog:    zaplog,
 	}
+}
+
+func (h *handlers) newRouter() (*http.ServeMux, *chi.Mux) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /{code}", logger.RequestLogMdlw(gzip.GzipMiddleware(h.GetShortener), h.zaplog))
+	mux.HandleFunc("POST /", logger.RequestLogMdlw(gzip.GzipMiddleware(h.SetShortener), h.zaplog))
+	mux.HandleFunc("POST /api/shorten", logger.RequestLogMdlw(gzip.GzipMiddleware(h.SetShortenerJSON), h.zaplog))
+
+	chi := chi.NewRouter() // dummy
+
+	return mux, chi
 }
 
 func (h *handlers) GetShortener(w http.ResponseWriter, r *http.Request) {
@@ -56,7 +64,7 @@ func (h *handlers) GetShortener(w http.ResponseWriter, r *http.Request) {
 		Code: code,
 	})
 	if err != nil {
-		http.Error(w, "", http.StatusBadRequest)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -66,7 +74,7 @@ func (h *handlers) GetShortener(w http.ResponseWriter, r *http.Request) {
 func (h *handlers) SetShortener(w http.ResponseWriter, r *http.Request) {
 	url, err := io.ReadAll(r.Body)
 	if err != nil {
-		http.Error(w, "", http.StatusBadRequest)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -74,11 +82,54 @@ func (h *handlers) SetShortener(w http.ResponseWriter, r *http.Request) {
 		URL: string(url),
 	})
 	if err != nil {
-		http.Error(w, "", http.StatusBadRequest)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	w.WriteHeader(http.StatusCreated)
-	w.Header().Add("Content-Type", "text/plain")
 	io.WriteString(w, fmt.Sprintf("http://%s/%s", h.baseaddr, resp.Code))
+}
+
+type RawURLJSON struct {
+	URL string `json:"url"`
+}
+
+type ShortURLJSON struct {
+	Result string `json:"result"`
+}
+
+func (h *handlers) SetShortenerJSON(w http.ResponseWriter, r *http.Request) {
+	var buf bytes.Buffer
+	_, err := buf.ReadFrom(r.Body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	var rawURL RawURLJSON
+	err = json.Unmarshal(buf.Bytes(), &rawURL)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	resp, err := h.shortener.SetShortener(&service.SetShortenerRequest{
+		URL: rawURL.URL,
+	})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	var shortURL ShortURLJSON
+	shortURL.Result = fmt.Sprintf("http://%s/%s", h.baseaddr, resp.Code)
+	respJSON, err := json.Marshal(shortURL)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	w.Write(respJSON)
 }

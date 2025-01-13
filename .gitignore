@@ -21,3 +21,9 @@ vendor/
 # IDEs directories
 .idea
 .vscode
+
+# linter
+golangci-lint
+
+# store file
+cmd/shortener/shortener.json

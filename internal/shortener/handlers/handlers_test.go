@@ -8,7 +8,9 @@ import (
 	"testing"
 
 	"github.com/iurnickita/vigilant-train/internal/shortener/repository"
+	repositoryConfig "github.com/iurnickita/vigilant-train/internal/shortener/repository/config"
 	"github.com/iurnickita/vigilant-train/internal/shortener/service"
+	"go.uber.org/zap"
 
 	"github.com/stretchr/testify/require"
 )
@@ -27,9 +29,9 @@ func TestHandlers(t *testing.T) {
 		},
 	}
 
-	store := repository.NewStore()
+	store, _ := repository.NewStore(repositoryConfig.Config{StoreType: repositoryConfig.StoreTypeVar})
 	shortenerService := service.NewShortener(store)
-	h := newHandlers(shortenerService, "localhost:8080")
+	h := newHandlers(shortenerService, "localhost:8080", zap.NewNop())
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
