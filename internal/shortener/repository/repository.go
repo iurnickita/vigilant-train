@@ -239,11 +239,13 @@ func NewStoreDB(cfg config.Config) (*StoreDB, error) {
 				");")
 	} else {
 		// ок - читаем
-		for rows.Next() {
-			var code string
-			var url string
-			if err := rows.Scan(&code, &url); err == nil {
-				shortener[code] = url
+		if rows.Err() == nil {
+			for rows.Next() {
+				var code string
+				var url string
+				if err := rows.Scan(&code, &url); err == nil {
+					shortener[code] = url
+				}
 			}
 		}
 	}
