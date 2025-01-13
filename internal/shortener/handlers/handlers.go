@@ -52,7 +52,7 @@ func (h *handlers) newRouter() (*http.ServeMux, *chi.Mux) {
 	mux.HandleFunc("GET /{code}", logger.RequestLogMdlw(gzip.GzipMiddleware(h.GetShortener), h.zaplog))
 	mux.HandleFunc("POST /", logger.RequestLogMdlw(gzip.GzipMiddleware(h.SetShortener), h.zaplog))
 	mux.HandleFunc("POST /api/shorten", logger.RequestLogMdlw(gzip.GzipMiddleware(h.SetShortenerJSON), h.zaplog))
-	mux.HandleFunc("GET /ping", h.Ping)
+	mux.HandleFunc("GET /ping", logger.RequestLogMdlw(h.Ping, h.zaplog))
 
 	chi := chi.NewRouter() // dummy
 
@@ -84,8 +84,14 @@ func (h *handlers) SetShortener(w http.ResponseWriter, r *http.Request) {
 		URL: string(url),
 	})
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
+		if resp.Code != "" {
+			w.WriteHeader(http.StatusConflict)
+			io.WriteString(w, fmt.Sprintf("http://%s/%s", h.baseaddr, resp.Code))
+			return
+		} else {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
 	}
 
 	w.WriteHeader(http.StatusCreated)
@@ -118,9 +124,15 @@ func (h *handlers) SetShortenerJSON(w http.ResponseWriter, r *http.Request) {
 	resp, err := h.shortener.SetShortener(&service.SetShortenerRequest{
 		URL: rawURL.URL,
 	})
+	httpStatus := http.StatusCreated
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
+		if resp.Code != "" {
+			httpStatus = http.StatusConflict
+			return
+		} else {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
 	}
 
 	var shortURL ShortURLJSON
@@ -132,8 +144,12 @@ func (h *handlers) SetShortenerJSON(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
+	w.WriteHeader(httpStatus)
 	w.Write(respJSON)
+}
+
+func (h *handlers) SetShortenerJSONBatch(w http.ResponseWriter, r *http.Request) {
+
 }
 
 func (h *handlers) Ping(w http.ResponseWriter, r *http.Request) {

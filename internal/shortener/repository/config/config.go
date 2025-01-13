@@ -1,10 +1,9 @@
 package config
 
 const (
-	StoreTypeVar    string = ""
-	StoreTypeFile   string = "1"
-	StoreTypeDB     string = "2"
-	DefaultFilename string = "shortener.json"
+	StoreTypeVar  string = ""
+	StoreTypeFile string = "1"
+	StoreTypeDB   string = "2"
 )
 
 type Config struct {
