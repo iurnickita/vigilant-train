@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/iurnickita/vigilant-train/internal/common/rand"
 	"github.com/iurnickita/vigilant-train/internal/shortener/repository"
@@ -59,8 +58,9 @@ type SetShortenerResponse struct {
 }
 
 func (s *Shortener) SetShortener(req *SetShortenerRequest) (*SetShortenerResponse, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
+	//ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	//defer cancel()
+	ctx := context.Background()
 
 	code := rand.String(6)
 
@@ -81,8 +81,9 @@ type SetShortenerResponseBatch struct {
 }
 
 func (s *Shortener) SetShortenerBatch(req *SetShortenerRequestBatch) (*SetShortenerResponseBatch, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
+	//ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	//defer cancel()
+	ctx := context.Background()
 
 	// конвертация запроса ??? как это сделать компактнее ??? и без лишнего цикла
 	var storeReq repository.SetShortenerRequestBatch

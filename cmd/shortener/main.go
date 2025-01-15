@@ -36,3 +36,4 @@ func run() error {
 
 // curl -v -X POST -d https://practicum.yandex.ru/ http://localhost:8080/
 // curl -v --json '{"url": "https://practicum.yandex.ru"}' http://localhost:8080/api/shorten
+// curl -v --json '[{"correlation_id": "15", "original_url": "https://www.postgresql.org/docs/current/sql-load.html"}]' http://localhost:8080/api/shorten/batch

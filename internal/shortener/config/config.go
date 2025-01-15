@@ -42,6 +42,8 @@ func GetConfig() Config {
 		cfg.Repository.DBDsn = envdbase
 	}
 
+	//cfg.Repository.DBDsn = "host=localhost user=bob password=bob dbname=shortener sslmode=disable"
+
 	if cfg.Repository.DBDsn != "" {
 		cfg.Repository.StoreType = repositoryConfig.StoreTypeDB
 	} else if cfg.Repository.Filename != "" {

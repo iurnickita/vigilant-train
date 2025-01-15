@@ -255,7 +255,7 @@ func NewStoreDB(cfg config.Config) (*StoreDB, error) {
 
 	return &StoreDB{
 		mux:       &sync.Mutex{},
-		shortener: make(map[string]string),
+		shortener: shortener,
 		database:  db,
 	}, nil
 }
@@ -332,8 +332,8 @@ func (s *StoreDB) SetShortenerBatch(ctx context.Context, req *SetShortenerReques
 		// Запись отдельной позиции
 		_, err := tx.ExecContext(ctx,
 			"INSERT INTO shortener AS t (code, url)"+
-				"VALUES ($1, $2)"+
-				"ON CONFLICT (code, url) DO NOTHING",
+				" VALUES ($1, $2)"+
+				" ON CONFLICT (code) DO NOTHING",
 			req.Code, req.URL)
 		if err != nil {
 			tx.Rollback()

@@ -27,9 +27,10 @@ func Serve(cfg config.Config, shortener Shortener, zaplog *zap.Logger) error {
 	return srv.ListenAndServe()
 }
 
-type Shortener interface {
+type Shortener interface { // Переместить в service.go
 	GetShortener(req *service.GetShortenerRequest) (*service.GetShortenerResponse, error)
 	SetShortener(req *service.SetShortenerRequest) (*service.SetShortenerResponse, error)
+	SetShortenerBatch(req *service.SetShortenerRequestBatch) (*service.SetShortenerResponseBatch, error)
 	Ping() error
 }
 
@@ -52,6 +53,7 @@ func (h *handlers) newRouter() (*http.ServeMux, *chi.Mux) {
 	mux.HandleFunc("GET /{code}", logger.RequestLogMdlw(gzip.GzipMiddleware(h.GetShortener), h.zaplog))
 	mux.HandleFunc("POST /", logger.RequestLogMdlw(gzip.GzipMiddleware(h.SetShortener), h.zaplog))
 	mux.HandleFunc("POST /api/shorten", logger.RequestLogMdlw(gzip.GzipMiddleware(h.SetShortenerJSON), h.zaplog))
+	mux.HandleFunc("POST /api/shorten/batch", logger.RequestLogMdlw(gzip.GzipMiddleware(h.SetShortenerJSONBatch), h.zaplog))
 	mux.HandleFunc("GET /ping", logger.RequestLogMdlw(h.Ping, h.zaplog))
 
 	chi := chi.NewRouter() // dummy
@@ -128,7 +130,6 @@ func (h *handlers) SetShortenerJSON(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if resp.Code != "" {
 			httpStatus = http.StatusConflict
-			return
 		} else {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
@@ -148,7 +149,75 @@ func (h *handlers) SetShortenerJSON(w http.ResponseWriter, r *http.Request) {
 	w.Write(respJSON)
 }
 
+type SetShortenerJSONBatchRRow struct {
+	Id     string `json:"correlation_id"`
+	RawUrl string `json:"original_url"`
+}
+type SetShortenerJSONBatchR []SetShortenerJSONBatchRRow
+
+type SetShortenerJSONBatchWRow struct {
+	Id       string `json:"correlation_id"`
+	ShortUrl string `json:"short_url"`
+}
+type SetShortenerJSONBatchW []SetShortenerJSONBatchWRow
+
 func (h *handlers) SetShortenerJSONBatch(w http.ResponseWriter, r *http.Request) {
+	var buf bytes.Buffer
+	_, err := buf.ReadFrom(r.Body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	var request SetShortenerJSONBatchR
+	err = json.Unmarshal(buf.Bytes(), &request)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	var requestService service.SetShortenerRequestBatch
+	for _, row := range request {
+		requestService.Rows = append(requestService.Rows, service.SetShortenerRequest{URL: row.RawUrl})
+	}
+
+	responseService, err := h.shortener.SetShortenerBatch(&requestService)
+	httpStatus := http.StatusCreated
+	if err != nil {
+		if len(responseService.Rows) > 0 {
+			httpStatus = http.StatusConflict
+		} else {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+	}
+
+	var response SetShortenerJSONBatchW
+	for _, respRow := range responseService.Rows {
+		var id string
+		id = ""
+		for _, reqRow := range request { // вместо этого можно было пропустить ID сквозь SetShortenerBatch, но я спешу
+			if reqRow.RawUrl == respRow.URL {
+				id = reqRow.Id
+				break
+			}
+		}
+		if id != "" {
+			shortURL := fmt.Sprintf("http://%s/%s", h.baseaddr, respRow.Code)
+			response = append(response, SetShortenerJSONBatchWRow{Id: id, ShortUrl: shortURL})
+		}
+	}
+
+	if len(response) > 0 {
+		responseJSON, err := json.Marshal(response)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(httpStatus)
+		w.Write(responseJSON)
+	}
 
 }
 
