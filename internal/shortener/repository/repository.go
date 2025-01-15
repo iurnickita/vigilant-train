@@ -232,11 +232,14 @@ func NewStoreDB(cfg config.Config) (*StoreDB, error) {
 	rows, err := db.Query("SELECT code, url FROM shortener;")
 	if err != nil {
 		// нет таблицы - создаем
-		db.Exec(
+		_, err := db.Exec(
 			"CREATE TABLE shortener (" +
-				"code VARCHAR (10) PRIMARY KEY," +
-				"url VARCHAR (255) NOT NULL" +
-				");")
+				" code VARCHAR (10) PRIMARY KEY," +
+				" url VARCHAR (255) NOT NULL" +
+				" );")
+		if err != nil {
+			return nil, err
+		}
 	} else {
 		// ок - читаем
 		if rows.Err() == nil {
@@ -278,11 +281,11 @@ func (s *StoreDB) SetShortener(ctx context.Context, req *SetShortenerRequest) (*
 	var oldCode string
 	row := s.database.QueryRowContext(ctx,
 		"SELECT code FROM shortener"+
-			"WHERE url = '$1'",
+			" WHERE url = $1",
 		req.URL)
 	err := row.Scan(&oldCode)
 
-	if err == nil {
+	if err == nil { // как ловить именно пустой результат, а не все ошибки БД? Ошибка нетипизирована error(*errors.errorString) *{s: "sql: no rows in result set"}
 
 		return &SetShortenerResponse{
 			Code: oldCode,
@@ -291,11 +294,14 @@ func (s *StoreDB) SetShortener(ctx context.Context, req *SetShortenerRequest) (*
 
 	} else {
 
-		s.database.ExecContext(ctx,
-			"INSERT INTO shortener AS t (code, url)"+
-				"VALUES ($1, $2)"+
-				"ON CONFLICT (code, url) DO NOTHING", // не понял как вернуть отсюда конфликтующую строку. Returning при конфликте возвращает пустоту
+		query := "INSERT INTO shortener (code, url)" +
+			" VALUES ($1, $2)" +
+			" ON CONFLICT (code) DO NOTHING"
+		_, err := s.database.ExecContext(ctx, query, // не понял как вернуть отсюда конфликтующую строку. Returning при конфликте возвращает пустоту
 			req.Code, req.URL)
+		if err != nil {
+			return nil, err
+		}
 
 		s.shortener[req.Code] = req.URL
 		return &SetShortenerResponse{

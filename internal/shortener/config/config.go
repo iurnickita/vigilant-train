@@ -38,14 +38,14 @@ func GetConfig() Config {
 	if envspath := os.Getenv("FILE_STORAGE_PATH"); envspath != "" {
 		cfg.Repository.Filename = envspath
 	}
-	if envdbase := os.Getenv("DATABASE_DSN"); envdbase != "" {
+	if envdbase := os.Getenv("DATABASE_DSN"); envdbase != "" { // export DATABASE_DSN="host=localhost user=bob password=bob dbname=shortener sslmode=disable"
 		cfg.Repository.DBDsn = envdbase
 	}
 
-	if cfg.Repository.Filename != "" {
-		cfg.Repository.StoreType = repositoryConfig.StoreTypeFile
-	} else if cfg.Repository.DBDsn != "" {
+	if cfg.Repository.DBDsn != "" {
 		cfg.Repository.StoreType = repositoryConfig.StoreTypeDB
+	} else if cfg.Repository.Filename != "" {
+		cfg.Repository.StoreType = repositoryConfig.StoreTypeFile
 	} else {
 		cfg.Repository.StoreType = repositoryConfig.StoreTypeVar
 	}

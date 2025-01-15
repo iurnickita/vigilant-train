@@ -25,5 +25,8 @@ vendor/
 # linter
 golangci-lint
 
-# store file
+# other
 cmd/shortener/shortener.json
+cmd/envtest
+
+
