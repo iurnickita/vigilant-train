@@ -150,14 +150,14 @@ func (h *handlers) SetShortenerJSON(w http.ResponseWriter, r *http.Request) {
 }
 
 type SetShortenerJSONBatchRRow struct {
-	Id     string `json:"correlation_id"`
-	RawUrl string `json:"original_url"`
+	ID     string `json:"correlation_id"`
+	RawURL string `json:"original_url"`
 }
 type SetShortenerJSONBatchR []SetShortenerJSONBatchRRow
 
 type SetShortenerJSONBatchWRow struct {
-	Id       string `json:"correlation_id"`
-	ShortUrl string `json:"short_url"`
+	ID       string `json:"correlation_id"`
+	ShortURL string `json:"short_url"`
 }
 type SetShortenerJSONBatchW []SetShortenerJSONBatchWRow
 
@@ -178,7 +178,7 @@ func (h *handlers) SetShortenerJSONBatch(w http.ResponseWriter, r *http.Request)
 
 	var requestService service.SetShortenerRequestBatch
 	for _, row := range request {
-		requestService.Rows = append(requestService.Rows, service.SetShortenerRequest{URL: row.RawUrl})
+		requestService.Rows = append(requestService.Rows, service.SetShortenerRequest{URL: row.RawURL})
 	}
 
 	responseService, err := h.shortener.SetShortenerBatch(&requestService)
@@ -197,14 +197,14 @@ func (h *handlers) SetShortenerJSONBatch(w http.ResponseWriter, r *http.Request)
 		var id string
 		id = ""
 		for _, reqRow := range request { // вместо этого можно было пропустить ID сквозь SetShortenerBatch, но я спешу
-			if reqRow.RawUrl == respRow.URL {
-				id = reqRow.Id
+			if reqRow.RawURL == respRow.URL {
+				id = reqRow.ID
 				break
 			}
 		}
 		if id != "" {
 			shortURL := fmt.Sprintf("http://%s/%s", h.baseaddr, respRow.Code)
-			response = append(response, SetShortenerJSONBatchWRow{Id: id, ShortUrl: shortURL})
+			response = append(response, SetShortenerJSONBatchWRow{ID: id, ShortURL: shortURL})
 		}
 	}
 
