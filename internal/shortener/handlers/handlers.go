@@ -126,6 +126,7 @@ func (h *handlers) SetShortenerJSON(w http.ResponseWriter, r *http.Request) {
 	resp, err := h.shortener.SetShortener(&service.SetShortenerRequest{
 		URL: rawURL.URL,
 	})
+
 	httpStatus := http.StatusCreated
 	if err != nil {
 		if resp.Code != "" {
@@ -182,6 +183,7 @@ func (h *handlers) SetShortenerJSONBatch(w http.ResponseWriter, r *http.Request)
 	}
 
 	responseService, err := h.shortener.SetShortenerBatch(&requestService)
+
 	httpStatus := http.StatusCreated
 	if err != nil {
 		if len(responseService.Rows) > 0 {
