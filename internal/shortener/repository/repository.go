@@ -103,20 +103,40 @@ func (s *StoreVar) GetShortener(req *GetShortenerRequest) (*GetShortenerResponse
 	}, nil
 }
 
-func (s *StoreVar) SetShortener(ctx context.Context, req *SetShortenerRequest) (*SetShortenerResponse, error) {
+func (s *StoreVar) SetShortener(_ context.Context, req *SetShortenerRequest) (*SetShortenerResponse, error) {
 	s.mux.Lock()
 	defer s.mux.Unlock()
 
+	// Проверка: уже существует
+	for oldCode, oldURL := range s.shortener {
+		if oldURL == req.URL {
+			return &SetShortenerResponse{
+				Code: oldCode,
+				URL:  req.URL,
+			}, ErrSetShortenerAlreadyExists
+		}
+	}
+
+	// Запись в хранилище
 	s.shortener[req.Code] = req.URL
 
+	// Ответ
 	return &SetShortenerResponse{
 		Code: req.Code,
 		URL:  req.URL,
 	}, nil
 }
 
-func (s *StoreVar) SetShortenerBatch(ctx context.Context, req *SetShortenerRequestBatch) (*SetShortenerResponseBatch, error) {
-	return nil, errors.New("unable. Coming soon")
+func (s *StoreVar) SetShortenerBatch(_ context.Context, req *SetShortenerRequestBatch) (*SetShortenerResponseBatch, error) {
+	var resp SetShortenerResponseBatch
+	for _, req := range req.Rows {
+		resprow, err := s.SetShortener(context.Background(), &req)
+		if err != nil {
+			return &SetShortenerResponseBatch{Rows: []SetShortenerResponse{0: *resprow}}, err
+		}
+		resp.Rows = append(resp.Rows, *resprow)
+	}
+	return &resp, nil
 }
 
 func (s *StoreVar) Ping() error {
@@ -172,10 +192,21 @@ func (s *StoreFile) GetShortener(req *GetShortenerRequest) (*GetShortenerRespons
 	}, nil
 }
 
-func (s *StoreFile) SetShortener(ctx context.Context, req *SetShortenerRequest) (*SetShortenerResponse, error) {
+func (s *StoreFile) SetShortener(_ context.Context, req *SetShortenerRequest) (*SetShortenerResponse, error) {
 	s.mux.Lock()
 	defer s.mux.Unlock()
 
+	// Проверка: уже существует
+	for oldCode, oldURL := range s.shortener {
+		if oldURL == req.URL {
+			return &SetShortenerResponse{
+				Code: oldCode,
+				URL:  req.URL,
+			}, ErrSetShortenerAlreadyExists
+		}
+	}
+
+	// Запись в хранилище
 	s.shortener[req.Code] = req.URL
 
 	resp := &SetShortenerResponse{
@@ -206,8 +237,16 @@ func (s *StoreFile) SetShortener(ctx context.Context, req *SetShortenerRequest) 
 
 }
 
-func (s *StoreFile) SetShortenerBatch(ctx context.Context, req *SetShortenerRequestBatch) (*SetShortenerResponseBatch, error) {
-	return nil, errors.New("unable. Coming soon")
+func (s *StoreFile) SetShortenerBatch(_ context.Context, req *SetShortenerRequestBatch) (*SetShortenerResponseBatch, error) {
+	var resp SetShortenerResponseBatch
+	for _, req := range req.Rows {
+		resprow, err := s.SetShortener(context.Background(), &req)
+		if err != nil {
+			return &SetShortenerResponseBatch{Rows: []SetShortenerResponse{0: *resprow}}, err
+		}
+		resp.Rows = append(resp.Rows, *resprow)
+	}
+	return &resp, nil
 }
 
 func (s *StoreFile) Ping() error {
@@ -217,9 +256,7 @@ func (s *StoreFile) Ping() error {
 // Реализация с хранением в базе данных
 
 type StoreDB struct {
-	mux       *sync.Mutex
-	shortener map[string]string
-	database  *sql.DB
+	database *sql.DB
 }
 
 func NewStoreDB(cfg config.Config) (*StoreDB, error) {
@@ -228,55 +265,38 @@ func NewStoreDB(cfg config.Config) (*StoreDB, error) {
 		return nil, err
 	}
 
-	shortener := map[string]string{}
-	rows, err := db.Query("SELECT code, url FROM shortener;")
+	// Создаем таблицу
+	_, err = db.Exec(
+		"CREATE TABLE IF NOT EXISTS shortener (" +
+			" code VARCHAR (10) PRIMARY KEY," +
+			" url VARCHAR (255) NOT NULL" +
+			" );")
 	if err != nil {
-		// нет таблицы - создаем
-		_, err := db.Exec(
-			"CREATE TABLE shortener (" +
-				" code VARCHAR (10) PRIMARY KEY," +
-				" url VARCHAR (255) NOT NULL" +
-				" );")
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		// ок - читаем
-		if rows.Err() == nil {
-			for rows.Next() {
-				var code string
-				var url string
-				if err := rows.Scan(&code, &url); err == nil {
-					shortener[code] = url
-				}
-			}
-		}
+		return nil, err
 	}
 
 	return &StoreDB{
-		mux:       &sync.Mutex{},
-		shortener: shortener,
-		database:  db,
+		database: db,
 	}, nil
 }
 
 func (s *StoreDB) GetShortener(req *GetShortenerRequest) (*GetShortenerResponse, error) {
-	s.mux.Lock()
-	defer s.mux.Unlock()
-
-	url, ok := s.shortener[req.Code]
-	if !ok {
-		return nil, newErrGetShortenerNotFound(req.Code)
+	var url string
+	row := s.database.QueryRow(
+		"SELECT url FROM shortener"+
+			" WHERE code = $1",
+		req.Code)
+	err := row.Scan(&url)
+	if err != nil {
+		return nil, err
 	}
+
 	return &GetShortenerResponse{
 		URL: url,
 	}, nil
 }
 
 func (s *StoreDB) SetShortener(ctx context.Context, req *SetShortenerRequest) (*SetShortenerResponse, error) {
-	s.mux.Lock()
-	defer s.mux.Unlock()
-
 	// Проверка: уже существует
 	var oldCode string
 	row := s.database.QueryRowContext(ctx,
@@ -284,37 +304,29 @@ func (s *StoreDB) SetShortener(ctx context.Context, req *SetShortenerRequest) (*
 			" WHERE url = $1",
 		req.URL)
 	err := row.Scan(&oldCode)
-
 	if err == nil { // как ловить именно пустой результат, а не все ошибки БД? Ошибка нетипизирована error(*errors.errorString) *{s: "sql: no rows in result set"}
-
 		return &SetShortenerResponse{
 			Code: oldCode,
 			URL:  req.URL,
 		}, ErrSetShortenerAlreadyExists
-
-	} else {
-
-		query := "INSERT INTO shortener (code, url)" +
-			" VALUES ($1, $2)" +
-			" ON CONFLICT (code) DO NOTHING"
-		_, err := s.database.ExecContext(ctx, query, // не понял как вернуть отсюда конфликтующую строку. Returning при конфликте возвращает пустоту
-			req.Code, req.URL)
-		if err != nil {
-			return nil, err
-		}
-
-		s.shortener[req.Code] = req.URL
-		return &SetShortenerResponse{
-			Code: req.Code,
-			URL:  req.URL,
-		}, nil
-
 	}
+
+	query := "INSERT INTO shortener (code, url)" +
+		" VALUES ($1, $2)" +
+		" ON CONFLICT (code) DO NOTHING"
+	_, err = s.database.ExecContext(ctx, query, // не понял как вернуть отсюда конфликтующую строку. Returning при конфликте возвращает пустоту
+		req.Code, req.URL)
+	if err != nil {
+		return nil, err
+	}
+
+	return &SetShortenerResponse{
+		Code: req.Code,
+		URL:  req.URL,
+	}, nil
 }
 
 func (s *StoreDB) SetShortenerBatch(ctx context.Context, req *SetShortenerRequestBatch) (*SetShortenerResponseBatch, error) {
-	s.mux.Lock()
-	defer s.mux.Unlock()
 
 	tx, err := s.database.Begin()
 	if err != nil {
@@ -324,13 +336,18 @@ func (s *StoreDB) SetShortenerBatch(ctx context.Context, req *SetShortenerReques
 	var resp SetShortenerResponseBatch
 	for _, req := range req.Rows {
 		// Проверка: уже существует
-		for code, url := range s.shortener {
-			if url == req.URL {
-				return &SetShortenerResponseBatch{Rows: []SetShortenerResponse{0: {Code: code, URL: url}}}, ErrSetShortenerAlreadyExists
-			}
+		var oldCode string
+		row := s.database.QueryRowContext(ctx,
+			"SELECT code FROM shortener"+
+				" WHERE url = $1",
+			req.URL)
+		err := row.Scan(&oldCode)
+		if err == nil {
+			return &SetShortenerResponseBatch{Rows: []SetShortenerResponse{0: {Code: oldCode, URL: req.URL}}}, ErrSetShortenerAlreadyExists
 		}
+
 		// Запись отдельной позиции
-		_, err := tx.ExecContext(ctx,
+		_, err = tx.ExecContext(ctx,
 			"INSERT INTO shortener AS t (code, url)"+
 				" VALUES ($1, $2)"+
 				" ON CONFLICT (code) DO NOTHING",
@@ -340,7 +357,6 @@ func (s *StoreDB) SetShortenerBatch(ctx context.Context, req *SetShortenerReques
 			return nil, err
 		}
 		resp.Rows = append(resp.Rows, SetShortenerResponse(req))
-		s.shortener[req.Code] = req.URL
 	}
 
 	err = tx.Commit()

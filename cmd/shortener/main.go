@@ -32,6 +32,7 @@ func run() error {
 	shortenerService := service.NewShortener(store)
 
 	return handlers.Serve(cfg.Handlers, shortenerService, zaplog)
+	// ловить ошибку, Defer db.close
 }
 
 // curl -v -X POST -d https://practicum.yandex.ru/ http://localhost:8080/

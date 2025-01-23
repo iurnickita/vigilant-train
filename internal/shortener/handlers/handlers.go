@@ -25,6 +25,7 @@ func Serve(cfg config.Config, shortener Shortener, zaplog *zap.Logger) error {
 	}
 
 	return srv.ListenAndServe()
+
 }
 
 type Shortener interface { // Переместить в service.go
