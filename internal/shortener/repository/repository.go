@@ -262,7 +262,7 @@ func NewStoreDB(cfg config.Config) (*StoreDB, error) {
 		"CREATE TABLE IF NOT EXISTS shortener (" +
 			" code VARCHAR (10) PRIMARY KEY," +
 			" url VARCHAR (255) NOT NULL," +
-			" user VARCHAR (10)" +
+			" uuid VARCHAR (10) DEFAULT NULL" +
 			" );")
 	if err != nil {
 		return nil, err
@@ -305,7 +305,7 @@ func (store *StoreDB) SetShortener(ctx context.Context, s model.Shortener) (mode
 		}, ErrSetShortenerAlreadyExists
 	}
 
-	query := "INSERT INTO shortener (code, url, user)" +
+	query := "INSERT INTO shortener (code, url, uuid)" +
 		" VALUES ($1, $2, $3)" +
 		" ON CONFLICT (code) DO NOTHING"
 	_, err = store.database.ExecContext(ctx, query, // не понял как вернуть отсюда конфликтующую строку. Returning при конфликте возвращает пустоту
@@ -341,7 +341,7 @@ func (store *StoreDB) SetShortenerBatch(ctx context.Context, s []model.Shortener
 
 		// Запись отдельной позиции
 		_, err = tx.ExecContext(ctx,
-			"INSERT INTO shortener AS t (code, url, user)"+
+			"INSERT INTO shortener AS t (code, url, uuid)"+
 				" VALUES ($1, $2, $3)"+
 				" ON CONFLICT (code) DO NOTHING",
 			reqS.Key.Code, reqS.Data.URL, reqS.Data.User)
@@ -368,7 +368,7 @@ func (store *StoreDB) GetShortenerBatch(ctx context.Context, userCode string) ([
 
 	rows, err := store.database.QueryContext(ctx,
 		"SELECT code, url FROM shortener"+
-			" WHERE user = &1", // как сделать опциональное условие
+			" WHERE uuid = &1", // как сделать опциональное условие
 		userCode)
 	if err != nil {
 		return nil, err
