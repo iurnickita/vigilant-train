@@ -368,14 +368,14 @@ func (store *StoreDB) GetShortenerBatch(ctx context.Context, userCode string) ([
 
 	rows, err := store.database.QueryContext(ctx,
 		"SELECT code, url FROM shortener"+
-			" WHERE uuid = &1", // как сделать опциональное условие
+			" WHERE uuid = $1", // как сделать опциональное условие
 		userCode)
 	if err != nil {
 		return nil, err
 	}
 	for rows.Next() {
 		var respRow model.Shortener
-		err := rows.Scan(respRow.Key.Code, respRow.Data.URL)
+		err := rows.Scan(&respRow.Key.Code, &respRow.Data.URL)
 		if err != nil {
 			return nil, err
 		}

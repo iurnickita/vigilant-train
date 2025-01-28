@@ -39,3 +39,5 @@ func run() error {
 // curl -v --json '{"url": "https://practicum.yandex.ru"}' http://localhost:8080/api/shorten
 // curl -v --json '[{"correlation_id": "15", "original_url": "https://www.postgresql.org/docs/current/sql-load.html"}]' http://localhost:8080/api/shorten/batch
 // curl -v http://localhost:8080/ping
+
+// curl -v --cookie "shortenerUserToken=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJVc2VyQ29kZSI6Ik1Od3YifQ.VTrykCIya-WxK0wzJnPM0BuztenqjzAOYJAbCKi85A0" http://localhost:8080/api/user/urls

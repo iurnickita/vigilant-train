@@ -270,7 +270,7 @@ func (h *handlers) getUserCode(w http.ResponseWriter, r *http.Request) (string, 
 	return userCode, nil
 }
 
-func (h *handlers) getUserCodeReadOnly(w http.ResponseWriter, r *http.Request) (string, error) {
+func (h *handlers) getUserCodeReadOnly(r *http.Request) (string, error) {
 
 	// куки пользователя
 	var userCode string
@@ -292,7 +292,7 @@ type GetUserURLsJSON struct {
 }
 
 func (h *handlers) GetUserURLs(w http.ResponseWriter, r *http.Request) {
-	userCode, err := h.getUserCodeReadOnly(w, r)
+	userCode, err := h.getUserCodeReadOnly(r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusUnauthorized)
 		return
