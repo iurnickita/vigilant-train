@@ -111,7 +111,7 @@ func (store *StoreVar) SetShortenerBatch(_ context.Context, s []model.Shortener)
 	return respSBatch, nil
 }
 
-func (s *StoreVar) Ping() error {
+func (store *StoreVar) Ping() error {
 	return nil
 }
 
@@ -261,7 +261,7 @@ func NewStoreDB(cfg config.Config) (*StoreDB, error) {
 	_, err = db.Exec(
 		"CREATE TABLE IF NOT EXISTS shortener (" +
 			" code VARCHAR (10) PRIMARY KEY," +
-			" url VARCHAR (255) NOT NULL" +
+			" url VARCHAR (255) NOT NULL," +
 			" user VARCHAR (10)" +
 			" );")
 	if err != nil {

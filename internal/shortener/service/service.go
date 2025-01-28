@@ -75,16 +75,16 @@ func (service *Shortener) Ping() error {
 	return service.store.Ping()
 }
 
-func (Service *Shortener) GetNewUserCode() string {
+func (service *Shortener) GetNewUserCode() string {
 	return rand.String(4)
 }
 
-func (Service *Shortener) GetShortnerBatchUser(userCode string) ([]model.Shortener, error) {
+func (service *Shortener) GetShortnerBatchUser(userCode string) ([]model.Shortener, error) {
 	ctx := context.Background()
 
 	if userCode == "" {
 		return nil, errors.New("userCode is empty")
 	}
 
-	return Service.store.GetShortenerBatch(ctx, userCode)
+	return service.store.GetShortenerBatch(ctx, userCode)
 }
