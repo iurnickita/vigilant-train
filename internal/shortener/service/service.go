@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
@@ -53,11 +54,54 @@ type SetShortenerRequest struct {
 
 type SetShortenerResponse struct {
 	Code string
+	URL  string
 }
 
 func (s *Shortener) SetShortener(req *SetShortenerRequest) (*SetShortenerResponse, error) {
-	code := rand.String(6)
-	s.store.SetShortener(&repository.SetShortenerRequest{Code: code, URL: req.URL})
+	//ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	//defer cancel()
+	ctx := context.Background()
 
-	return &SetShortenerResponse{Code: code}, nil
+	code := rand.String(6)
+
+	storeResp, err := s.store.SetShortener(ctx, &repository.SetShortenerRequest{Code: code, URL: req.URL})
+	if err != nil {
+		return &SetShortenerResponse{Code: storeResp.Code}, err
+	}
+
+	return &SetShortenerResponse{Code: code, URL: req.URL}, nil
+}
+
+type SetShortenerRequestBatch struct {
+	Rows []SetShortenerRequest
+}
+
+type SetShortenerResponseBatch struct {
+	Rows []SetShortenerResponse
+}
+
+func (s *Shortener) SetShortenerBatch(req *SetShortenerRequestBatch) (*SetShortenerResponseBatch, error) {
+	//ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	//defer cancel()
+	ctx := context.Background()
+
+	// конвертация запроса ??? как это сделать компактнее ??? и без лишнего цикла
+	var storeReq repository.SetShortenerRequestBatch
+	for _, row := range req.Rows {
+		code := rand.String(6)
+		storeReq.Rows = append(storeReq.Rows, repository.SetShortenerRequest{Code: code, URL: row.URL})
+	}
+
+	storeResp, err := s.store.SetShortenerBatch(ctx, &storeReq)
+
+	// конвертация ответа ??? как это сделать компактнее ??? и без лишнего цикла
+	var resp SetShortenerResponseBatch
+	for _, row := range storeResp.Rows {
+		resp.Rows = append(resp.Rows, SetShortenerResponse{Code: row.Code, URL: row.URL})
+	}
+	return &resp, err
+}
+
+func (s *Shortener) Ping() error {
+	return s.store.Ping()
 }
