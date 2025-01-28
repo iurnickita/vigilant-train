@@ -62,8 +62,8 @@ func (service *Shortener) SetShortener(s model.Shortener) (model.Shortener, erro
 func (service *Shortener) SetShortenerBatch(s []model.Shortener) ([]model.Shortener, error) {
 	ctx := context.Background()
 
-	for _, s := range s {
-		s.Key.Code = rand.String(6)
+	for i := range s {
+		s[i].Key.Code = rand.String(6)
 	}
 
 	storeResp, err := service.store.SetShortenerBatch(ctx, s)
