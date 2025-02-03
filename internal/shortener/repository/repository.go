@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 	"sync"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -24,6 +25,7 @@ type Repository interface {
 	SetShortenerBatch(ctx context.Context, s []model.Shortener) ([]model.Shortener, error)
 	Ping() error
 	GetShortenerBatch(ctx context.Context, userCode string) ([]model.Shortener, error)
+	DeleteShortenerBatch(ctx context.Context, s []model.Shortener) error
 }
 
 func NewStore(cfg config.Config) (Repository, error) {
@@ -43,6 +45,7 @@ func NewStore(cfg config.Config) (Repository, error) {
 var (
 	ErrGetShortenerNotFound      = errors.New("data not found")
 	ErrSetShortenerAlreadyExists = errors.New("url already exists")
+	ErrGetShortenerGone          = errors.New("code is deleted")
 )
 
 func newErrGetShortenerNotFound(code string) error {
@@ -123,6 +126,13 @@ func (store *StoreVar) GetShortenerBatch(_ context.Context, userCode string) ([]
 		}
 	}
 	return resp, nil
+}
+
+func (store *StoreVar) DeleteShortenerBatch(_ context.Context, s []model.Shortener) error {
+	for _, s := range s {
+		store.shortener[s.Key] = model.ShortenerData{}
+	}
+	return nil
 }
 
 // Реализация с хранением в файле
@@ -245,6 +255,10 @@ func (store *StoreFile) GetShortenerBatch(_ context.Context, userCode string) ([
 	return resp, nil
 }
 
+func (store *StoreFile) DeleteShortenerBatch(_ context.Context, s []model.Shortener) error {
+	return nil
+}
+
 // Реализация с хранением в базе данных
 
 type StoreDB struct {
@@ -262,7 +276,8 @@ func NewStoreDB(cfg config.Config) (*StoreDB, error) {
 		"CREATE TABLE IF NOT EXISTS shortener (" +
 			" code VARCHAR (10) PRIMARY KEY," +
 			" url VARCHAR (255) NOT NULL," +
-			" uuid VARCHAR (10) DEFAULT NULL" +
+			" uuid VARCHAR (10) DEFAULT NULL," +
+			" del_flag BOOLEAN DEFAULT FALSE" +
 			" );")
 	if err != nil {
 		return nil, err
@@ -275,13 +290,17 @@ func NewStoreDB(cfg config.Config) (*StoreDB, error) {
 
 func (store *StoreDB) GetShortener(code string) (model.Shortener, error) {
 	var url string
+	var delFlag bool
 	row := store.database.QueryRow(
-		"SELECT url FROM shortener"+
+		"SELECT url, del_flag FROM shortener"+
 			" WHERE code = $1",
 		code)
-	err := row.Scan(&url)
+	err := row.Scan(&url, &delFlag)
 	if err != nil {
 		return model.Shortener{}, err
+	}
+	if delFlag {
+		return model.Shortener{}, ErrGetShortenerGone
 	}
 
 	return model.Shortener{
@@ -368,7 +387,8 @@ func (store *StoreDB) GetShortenerBatch(ctx context.Context, userCode string) ([
 
 	rows, err := store.database.QueryContext(ctx,
 		"SELECT code, url FROM shortener"+
-			" WHERE uuid = $1", // как сделать опциональное условие
+			" WHERE uuid = $1"+ // как сделать опциональное условие
+			" AND del_flag = FALSE",
 		userCode)
 	if err != nil {
 		return nil, err
@@ -387,4 +407,29 @@ func (store *StoreDB) GetShortenerBatch(ctx context.Context, userCode string) ([
 
 	return resp, nil
 
+}
+
+func (store *StoreDB) DeleteShortenerBatch(ctx context.Context, s []model.Shortener) error {
+
+	var values []string
+	var args []any
+
+	for i, s := range s {
+		base := i * 2
+		params := fmt.Sprintf("($%d, $%d)", base+1, base+2)
+		values = append(values, params)
+		args = append(args, s.Key.Code, s.Data.User)
+	}
+
+	query := "UPDATE shortener AS s" +
+		" SET del_flag = TRUE" +
+		" FROM (values " +
+		strings.Join(values, ",") +
+		" ) AS k(code, uuid) " +
+		" WHERE s.code = k.code" +
+		"   AND s.uuid = k.uuid"
+
+	_, err := store.database.ExecContext(ctx, query, args...)
+
+	return err
 }

@@ -3,6 +3,7 @@ package handlers
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -12,6 +13,7 @@ import (
 	"github.com/iurnickita/vigilant-train/internal/shortener/handlers/config"
 	"github.com/iurnickita/vigilant-train/internal/shortener/logger"
 	"github.com/iurnickita/vigilant-train/internal/shortener/model"
+	"github.com/iurnickita/vigilant-train/internal/shortener/repository"
 	"github.com/iurnickita/vigilant-train/internal/shortener/service"
 	"github.com/iurnickita/vigilant-train/internal/shortener/token"
 	"go.uber.org/zap"
@@ -54,6 +56,7 @@ func (h *handlers) newRouter() (*http.ServeMux, *chi.Mux) {
 	mux.HandleFunc("POST /api/shorten/batch", logger.RequestLogMdlw(gzip.GzipMiddleware(h.SetShortenerJSONBatch), h.zaplog))
 	mux.HandleFunc("GET /ping", logger.RequestLogMdlw(h.Ping, h.zaplog))
 	mux.HandleFunc("GET /api/user/urls", logger.RequestLogMdlw(gzip.GzipMiddleware(h.GetUserURLs), h.zaplog))
+	mux.HandleFunc("DELETE /api/user/urls", logger.RequestLogMdlw(gzip.GzipMiddleware(h.DeleteShortenerBatch), h.zaplog))
 
 	chi := chi.NewRouter() // dummy
 
@@ -65,7 +68,11 @@ func (h *handlers) GetShortener(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := h.shortener.GetShortener(code)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		if errors.Is(err, repository.ErrGetShortenerGone) {
+			http.Error(w, err.Error(), http.StatusGone)
+		} else {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		}
 		return
 	}
 
@@ -321,4 +328,38 @@ func (h *handlers) GetUserURLs(w http.ResponseWriter, r *http.Request) {
 	} else {
 		w.WriteHeader(http.StatusNoContent)
 	}
+}
+
+func (h *handlers) DeleteShortenerBatch(w http.ResponseWriter, r *http.Request) {
+	// получение id пользователя
+	userCode, err := h.getUserCodeReadOnly(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+		return
+	}
+
+	// Чтение body
+	var buf bytes.Buffer
+	_, err = buf.ReadFrom(r.Body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	var codeArr []string
+	err = json.Unmarshal(buf.Bytes(), &codeArr)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Конвертация
+	var s []model.Shortener
+	for _, code := range codeArr {
+		s = append(s, model.Shortener{Key: model.ShortenerKey{Code: code}, Data: model.ShortenerData{User: userCode}})
+	}
+
+	// Вызов метода сервиса
+	h.shortener.DeleteShortenerBatch(s)
+
+	w.WriteHeader(http.StatusAccepted)
 }
