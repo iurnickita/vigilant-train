@@ -301,7 +301,8 @@ type GetUserURLsJSON struct {
 func (h *handlers) GetUserURLs(w http.ResponseWriter, r *http.Request) {
 	userCode, err := h.getUserCodeReadOnly(r)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusUnauthorized)
+		//http.Error(w, err.Error(), http.StatusUnauthorized)
+		http.Error(w, err.Error(), http.StatusNoContent)
 		return
 	}
 
