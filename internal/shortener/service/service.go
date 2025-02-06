@@ -16,7 +16,6 @@ type Service interface {
 	SetShortener(s model.Shortener) (model.Shortener, error)
 	SetShortenerBatch(s []model.Shortener) ([]model.Shortener, error)
 	Ping() error
-	GetNewUserCode() string
 	GetShortnerBatchUser(userCode string) ([]model.Shortener, error)
 	DeleteShortenerBatch(s []model.Shortener) error
 }
@@ -84,10 +83,6 @@ func (service *Shortener) SetShortenerBatch(s []model.Shortener) ([]model.Shorte
 
 func (service *Shortener) Ping() error {
 	return service.store.Ping()
-}
-
-func (service *Shortener) GetNewUserCode() string {
-	return rand.String(4)
 }
 
 func (service *Shortener) GetShortnerBatchUser(userCode string) ([]model.Shortener, error) {

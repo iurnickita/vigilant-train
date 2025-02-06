@@ -40,5 +40,5 @@ func run() error {
 // curl -v --json '[{"correlation_id": "15", "original_url": "https://www.postgresql.org/docs/current/sql-load.html"}]' http://localhost:8080/api/shorten/batch
 // curl -v http://localhost:8080/ping
 
-// curl -v --cookie "shortenerUserToken=" http://localhost:8080/api/user/urls
+// curl -v --cookie "shortenerUserToken=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJVc2VyQ29kZSI6Ik9wbjQifQ.4l6jDxxtNqK25Lr8ilCdvEdkT-fTSvj90FJwCnSb5q4" http://localhost:8080/api/user/urls
 // curl -v -X DELETE --json '["mLIECn"]' --cookie "shortenerUserToken=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJVc2VyQ29kZSI6InpiY20ifQ.-Sq1MQxXGibVii7B3TdlF-LGM7TaL7Bttf6IQbqsrnw" http://localhost:8080/api/user/urls
