@@ -4,104 +4,118 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/iurnickita/vigilant-train/internal/common/rand"
+	"github.com/iurnickita/vigilant-train/internal/shortener/model"
 	"github.com/iurnickita/vigilant-train/internal/shortener/repository"
 )
 
+type Service interface {
+	GetShortener(code string) (model.Shortener, error)
+	SetShortener(s model.Shortener) (model.Shortener, error)
+	SetShortenerBatch(s []model.Shortener) ([]model.Shortener, error)
+	Ping() error
+	GetShortnerBatchUser(userCode string) ([]model.Shortener, error)
+	DeleteShortenerBatch(s []model.Shortener) error
+}
+
 type Shortener struct {
-	store repository.Repository
+	store    repository.Repository
+	toDelete chan []model.Shortener
 }
 
 func NewShortener(store repository.Repository) *Shortener {
-	return &Shortener{
-		store: store,
+	toDelete := make(chan []model.Shortener, 100)
+
+	shortener := Shortener{
+		store:    store,
+		toDelete: toDelete,
 	}
-}
 
-type GetShortenerRequest struct {
-	Code string
-}
+	go shortener.flushDeletes()
 
-type GetShortenerResponse struct {
-	URL string
+	return &shortener
 }
 
 var (
 	ErrGetShortenerInvalidRequest = errors.New("invalid get Shortener request")
 	ErrRepoFailed                 = errors.New("repo failed")
+	ErrChanToDeleteIsFull         = errors.New("queue to delete is full")
 )
 
-func (s *Shortener) GetShortener(req *GetShortenerRequest) (*GetShortenerResponse, error) {
+func (service *Shortener) GetShortener(code string) (model.Shortener, error) {
 
-	repositoryResp, err := s.store.GetShortener(&repository.GetShortenerRequest{
-		Code: req.Code,
-	})
+	repositoryResp, err := service.store.GetShortener(code)
 	if err != nil {
 		if !errors.Is(err, repository.ErrGetShortenerNotFound) {
-			return nil, fmt.Errorf("failed to fetch the Shortener result from the store: %w", err)
+			return model.Shortener{}, fmt.Errorf("failed to fetch the Shortener result from the store: %w", err)
 		}
 	}
 
-	return &GetShortenerResponse{
-		URL: repositoryResp.URL,
-	}, nil
+	return repositoryResp, nil
 }
 
-type SetShortenerRequest struct {
-	URL string
-}
-
-type SetShortenerResponse struct {
-	Code string
-	URL  string
-}
-
-func (s *Shortener) SetShortener(req *SetShortenerRequest) (*SetShortenerResponse, error) {
-	//ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	//defer cancel()
+func (service *Shortener) SetShortener(s model.Shortener) (model.Shortener, error) {
 	ctx := context.Background()
 
-	code := rand.String(6)
+	s.Key.Code = rand.String(6)
 
-	storeResp, err := s.store.SetShortener(ctx, &repository.SetShortenerRequest{Code: code, URL: req.URL})
+	storeResp, err := service.store.SetShortener(ctx, s)
 	if err != nil {
-		return &SetShortenerResponse{Code: storeResp.Code}, err
+		return storeResp, err
 	}
 
-	return &SetShortenerResponse{Code: code, URL: req.URL}, nil
+	return storeResp, nil
 }
 
-type SetShortenerRequestBatch struct {
-	Rows []SetShortenerRequest
-}
-
-type SetShortenerResponseBatch struct {
-	Rows []SetShortenerResponse
-}
-
-func (s *Shortener) SetShortenerBatch(req *SetShortenerRequestBatch) (*SetShortenerResponseBatch, error) {
-	//ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	//defer cancel()
+func (service *Shortener) SetShortenerBatch(s []model.Shortener) ([]model.Shortener, error) {
 	ctx := context.Background()
 
-	// конвертация запроса ??? как это сделать компактнее ??? и без лишнего цикла
-	var storeReq repository.SetShortenerRequestBatch
-	for _, row := range req.Rows {
-		code := rand.String(6)
-		storeReq.Rows = append(storeReq.Rows, repository.SetShortenerRequest{Code: code, URL: row.URL})
+	for i := range s {
+		s[i].Key.Code = rand.String(6)
 	}
 
-	storeResp, err := s.store.SetShortenerBatch(ctx, &storeReq)
+	storeResp, err := service.store.SetShortenerBatch(ctx, s)
 
-	// конвертация ответа ??? как это сделать компактнее ??? и без лишнего цикла
-	var resp SetShortenerResponseBatch
-	for _, row := range storeResp.Rows {
-		resp.Rows = append(resp.Rows, SetShortenerResponse{Code: row.Code, URL: row.URL})
-	}
-	return &resp, err
+	return storeResp, err
 }
 
-func (s *Shortener) Ping() error {
-	return s.store.Ping()
+func (service *Shortener) Ping() error {
+	return service.store.Ping()
+}
+
+func (service *Shortener) GetShortnerBatchUser(userCode string) ([]model.Shortener, error) {
+	ctx := context.Background()
+
+	if userCode == "" {
+		return nil, errors.New("userCode is empty")
+	}
+
+	return service.store.GetShortenerBatch(ctx, userCode)
+}
+
+func (service *Shortener) DeleteShortenerBatch(s []model.Shortener) error {
+	service.toDelete <- s
+	return nil
+}
+
+func (service *Shortener) flushDeletes() {
+	ctx := context.Background()
+	ticker := time.NewTicker(10 * time.Second)
+
+	var toDelete []model.Shortener
+
+	for {
+		select {
+		case s := <-service.toDelete:
+			toDelete = append(toDelete, s...)
+		case <-ticker.C:
+			if len(toDelete) == 0 {
+				continue
+			}
+			service.store.DeleteShortenerBatch(ctx, toDelete)
+			toDelete = nil
+		}
+	}
 }
