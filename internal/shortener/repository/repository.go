@@ -314,8 +314,7 @@ func (store *StoreDB) SetShortener(ctx context.Context, s model.Shortener) (mode
 	var oldCode string
 	row := store.database.QueryRowContext(ctx,
 		"SELECT code FROM shortener"+
-			" WHERE url = $1"+
-			" FOR UPDATE",
+			" WHERE url = $1",
 		s.Data.URL)
 	err := row.Scan(&oldCode)
 	if err == nil { // как ловить именно пустой результат, а не все ошибки БД? Ошибка нетипизирована error(*errors.errorString) *{s: "sql: no rows in result set"}
