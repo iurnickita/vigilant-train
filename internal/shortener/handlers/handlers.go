@@ -299,7 +299,8 @@ type GetUserURLsJSON struct {
 }
 
 func (h *handlers) GetUserURLs(w http.ResponseWriter, r *http.Request) {
-	userCode, err := h.getUserCodeReadOnly(r)
+	//userCode, err := h.getUserCodeReadOnly(r)
+	userCode, err := h.getUserCode(w, r)
 	if err != nil {
 		//http.Error(w, err.Error(), http.StatusUnauthorized)
 		http.Error(w, err.Error(), http.StatusNoContent)
@@ -333,7 +334,8 @@ func (h *handlers) GetUserURLs(w http.ResponseWriter, r *http.Request) {
 
 func (h *handlers) DeleteShortenerBatch(w http.ResponseWriter, r *http.Request) {
 	// получение id пользователя
-	userCode, err := h.getUserCodeReadOnly(r)
+	//userCode, err := h.getUserCodeReadOnly(r)
+	userCode, err := h.getUserCode(w, r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusUnauthorized)
 		return
