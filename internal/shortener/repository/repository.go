@@ -314,7 +314,8 @@ func (store *StoreDB) SetShortener(ctx context.Context, s model.Shortener) (mode
 	var oldCode string
 	row := store.database.QueryRowContext(ctx,
 		"SELECT code FROM shortener"+
-			" WHERE url = $1",
+			" WHERE url = $1"+
+			" FOR UPDATE",
 		s.Data.URL)
 	err := row.Scan(&oldCode)
 	if err == nil { // как ловить именно пустой результат, а не все ошибки БД? Ошибка нетипизирована error(*errors.errorString) *{s: "sql: no rows in result set"}
@@ -342,6 +343,7 @@ func (store *StoreDB) SetShortenerBatch(ctx context.Context, s []model.Shortener
 	if err != nil {
 		return nil, err
 	}
+	defer tx.Rollback()
 
 	var respSBatch []model.Shortener
 	for _, reqS := range s {
@@ -349,7 +351,8 @@ func (store *StoreDB) SetShortenerBatch(ctx context.Context, s []model.Shortener
 		var oldCode string
 		row := store.database.QueryRowContext(ctx,
 			"SELECT code FROM shortener"+
-				" WHERE url = $1",
+				" WHERE url = $1"+
+				" FOR UPDATE",
 			reqS.Data.URL)
 		err := row.Scan(&oldCode)
 		if err == nil {
@@ -365,7 +368,6 @@ func (store *StoreDB) SetShortenerBatch(ctx context.Context, s []model.Shortener
 				" ON CONFLICT (code) DO NOTHING",
 			reqS.Key.Code, reqS.Data.URL, reqS.Data.User)
 		if err != nil {
-			tx.Rollback()
 			return nil, err
 		}
 		respSBatch = append(respSBatch, reqS)
@@ -393,6 +395,7 @@ func (store *StoreDB) GetShortenerBatch(ctx context.Context, userCode string) ([
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 	for rows.Next() {
 		var respRow model.Shortener
 		err := rows.Scan(&respRow.Key.Code, &respRow.Data.URL)

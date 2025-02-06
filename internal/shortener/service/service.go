@@ -101,9 +101,6 @@ func (service *Shortener) GetShortnerBatchUser(userCode string) ([]model.Shorten
 }
 
 func (service *Shortener) DeleteShortenerBatch(s []model.Shortener) error {
-	if len(service.toDelete) >= cap(service.toDelete) {
-		return ErrChanToDeleteIsFull
-	}
 	service.toDelete <- s
 	return nil
 }

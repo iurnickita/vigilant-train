@@ -353,13 +353,15 @@ func (h *handlers) DeleteShortenerBatch(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// Конвертация
-	var s []model.Shortener
+	s := make([]model.Shortener, 0, len(codeArr))
 	for _, code := range codeArr {
 		s = append(s, model.Shortener{Key: model.ShortenerKey{Code: code}, Data: model.ShortenerData{User: userCode}})
 	}
 
 	// Вызов метода сервиса
-	h.shortener.DeleteShortenerBatch(s)
+	go func() {
+		h.shortener.DeleteShortenerBatch(s)
+	}()
 
 	w.WriteHeader(http.StatusAccepted)
 }
