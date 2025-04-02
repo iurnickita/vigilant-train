@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/iurnickita/vigilant-train/internal/common/rand"
 	"github.com/iurnickita/vigilant-train/internal/shortener/model"
@@ -15,23 +16,32 @@ type Service interface {
 	SetShortener(s model.Shortener) (model.Shortener, error)
 	SetShortenerBatch(s []model.Shortener) ([]model.Shortener, error)
 	Ping() error
-	GetNewUserCode() string
 	GetShortnerBatchUser(userCode string) ([]model.Shortener, error)
+	DeleteShortenerBatch(s []model.Shortener) error
 }
 
 type Shortener struct {
-	store repository.Repository
+	store    repository.Repository
+	toDelete chan []model.Shortener
 }
 
 func NewShortener(store repository.Repository) *Shortener {
-	return &Shortener{
-		store: store,
+	toDelete := make(chan []model.Shortener, 100)
+
+	shortener := Shortener{
+		store:    store,
+		toDelete: toDelete,
 	}
+
+	go shortener.flushDeletes()
+
+	return &shortener
 }
 
 var (
 	ErrGetShortenerInvalidRequest = errors.New("invalid get Shortener request")
 	ErrRepoFailed                 = errors.New("repo failed")
+	ErrChanToDeleteIsFull         = errors.New("queue to delete is full")
 )
 
 func (service *Shortener) GetShortener(code string) (model.Shortener, error) {
@@ -75,10 +85,6 @@ func (service *Shortener) Ping() error {
 	return service.store.Ping()
 }
 
-func (service *Shortener) GetNewUserCode() string {
-	return rand.String(4)
-}
-
 func (service *Shortener) GetShortnerBatchUser(userCode string) ([]model.Shortener, error) {
 	ctx := context.Background()
 
@@ -87,4 +93,29 @@ func (service *Shortener) GetShortnerBatchUser(userCode string) ([]model.Shorten
 	}
 
 	return service.store.GetShortenerBatch(ctx, userCode)
+}
+
+func (service *Shortener) DeleteShortenerBatch(s []model.Shortener) error {
+	service.toDelete <- s
+	return nil
+}
+
+func (service *Shortener) flushDeletes() {
+	ctx := context.Background()
+	ticker := time.NewTicker(10 * time.Second)
+
+	var toDelete []model.Shortener
+
+	for {
+		select {
+		case s := <-service.toDelete:
+			toDelete = append(toDelete, s...)
+		case <-ticker.C:
+			if len(toDelete) == 0 {
+				continue
+			}
+			service.store.DeleteShortenerBatch(ctx, toDelete)
+			toDelete = nil
+		}
+	}
 }

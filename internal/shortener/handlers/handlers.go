@@ -3,21 +3,21 @@ package handlers
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/iurnickita/vigilant-train/internal/shortener/auth"
 	"github.com/iurnickita/vigilant-train/internal/shortener/gzip"
 	"github.com/iurnickita/vigilant-train/internal/shortener/handlers/config"
 	"github.com/iurnickita/vigilant-train/internal/shortener/logger"
 	"github.com/iurnickita/vigilant-train/internal/shortener/model"
+	"github.com/iurnickita/vigilant-train/internal/shortener/repository"
 	"github.com/iurnickita/vigilant-train/internal/shortener/service"
-	"github.com/iurnickita/vigilant-train/internal/shortener/token"
 	"go.uber.org/zap"
 )
-
-const cCookieUser = "shortenerUserToken"
 
 func Serve(cfg config.Config, shortener service.Service, zaplog *zap.Logger) error {
 	h := newHandlers(shortener, cfg.BaseAddr, zaplog)
@@ -49,11 +49,12 @@ func newHandlers(shortener service.Service, baseaddr string, zaplog *zap.Logger)
 func (h *handlers) newRouter() (*http.ServeMux, *chi.Mux) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /{code}", logger.RequestLogMdlw(gzip.GzipMiddleware(h.GetShortener), h.zaplog))
-	mux.HandleFunc("POST /", logger.RequestLogMdlw(gzip.GzipMiddleware(h.SetShortener), h.zaplog))
-	mux.HandleFunc("POST /api/shorten", logger.RequestLogMdlw(gzip.GzipMiddleware(h.SetShortenerJSON), h.zaplog))
-	mux.HandleFunc("POST /api/shorten/batch", logger.RequestLogMdlw(gzip.GzipMiddleware(h.SetShortenerJSONBatch), h.zaplog))
+	mux.HandleFunc("POST /", logger.RequestLogMdlw(gzip.GzipMiddleware(auth.AuthMiddleware(h.SetShortener)), h.zaplog))
+	mux.HandleFunc("POST /api/shorten", logger.RequestLogMdlw(gzip.GzipMiddleware(auth.AuthMiddleware(h.SetShortenerJSON)), h.zaplog))
+	mux.HandleFunc("POST /api/shorten/batch", logger.RequestLogMdlw(gzip.GzipMiddleware(auth.AuthMiddleware(h.SetShortenerJSONBatch)), h.zaplog))
 	mux.HandleFunc("GET /ping", logger.RequestLogMdlw(h.Ping, h.zaplog))
-	mux.HandleFunc("GET /api/user/urls", logger.RequestLogMdlw(gzip.GzipMiddleware(h.GetUserURLs), h.zaplog))
+	mux.HandleFunc("GET /api/user/urls", logger.RequestLogMdlw(gzip.GzipMiddleware(auth.AuthMiddleware(h.GetUserURLs)), h.zaplog))
+	mux.HandleFunc("DELETE /api/user/urls", logger.RequestLogMdlw(gzip.GzipMiddleware(auth.AuthMiddleware(h.DeleteShortenerBatch)), h.zaplog))
 
 	chi := chi.NewRouter() // dummy
 
@@ -65,7 +66,11 @@ func (h *handlers) GetShortener(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := h.shortener.GetShortener(code)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		if errors.Is(err, repository.ErrGetShortenerGone) {
+			http.Error(w, err.Error(), http.StatusGone)
+		} else {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		}
 		return
 	}
 
@@ -79,11 +84,7 @@ func (h *handlers) SetShortener(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userCode, err := h.getUserCode(w, r)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
+	userCode := r.Header.Get(auth.UserCodeKey)
 
 	resp, err := h.shortener.SetShortener(model.Shortener{
 		Data: model.ShortenerData{URL: string(url), User: userCode},
@@ -126,11 +127,7 @@ func (h *handlers) SetShortenerJSON(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userCode, err := h.getUserCode(w, r)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
+	userCode := r.Header.Get(auth.UserCodeKey)
 
 	resp, err := h.shortener.SetShortener(model.Shortener{
 		Data: model.ShortenerData{URL: rawURL.URL, User: userCode},
@@ -186,11 +183,7 @@ func (h *handlers) SetShortenerJSONBatch(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	userCode, err := h.getUserCode(w, r)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
+	userCode := r.Header.Get(auth.UserCodeKey)
 
 	var requestService []model.Shortener
 	for _, row := range request {
@@ -245,58 +238,13 @@ func (h *handlers) Ping(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h *handlers) getUserCode(w http.ResponseWriter, r *http.Request) (string, error) {
-
-	// куки пользователя
-	var userCode string
-	tokenCookie, err := r.Cookie(cCookieUser)
-	if err != nil {
-		userCode = h.shortener.GetNewUserCode()
-		tokenString, err := token.BuildJWTString(userCode)
-		if err != nil {
-			return "", err
-		}
-		tokenCookie := http.Cookie{
-			Name:  cCookieUser,
-			Value: tokenString,
-		}
-		http.SetCookie(w, &tokenCookie)
-	} else {
-		userCode, err = token.GetUserCode(tokenCookie.Value)
-		if err != nil {
-			return "", err
-		}
-	}
-	return userCode, nil
-}
-
-func (h *handlers) getUserCodeReadOnly(r *http.Request) (string, error) {
-
-	// куки пользователя
-	var userCode string
-	tokenCookie, err := r.Cookie(cCookieUser)
-	if err != nil {
-		return "", err
-	} else {
-		userCode, err = token.GetUserCode(tokenCookie.Value)
-		if err != nil {
-			return "", err
-		}
-	}
-	return userCode, nil
-}
-
 type GetUserURLsJSON struct {
 	ShortURL    string `json:"short_url"`
 	OriginalURL string `json:"original_url"`
 }
 
 func (h *handlers) GetUserURLs(w http.ResponseWriter, r *http.Request) {
-	userCode, err := h.getUserCodeReadOnly(r)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusUnauthorized)
-		return
-	}
+	userCode := r.Header.Get(auth.UserCodeKey)
 
 	batch, err := h.shortener.GetShortnerBatchUser(userCode)
 	if err != nil {
@@ -321,4 +269,36 @@ func (h *handlers) GetUserURLs(w http.ResponseWriter, r *http.Request) {
 	} else {
 		w.WriteHeader(http.StatusNoContent)
 	}
+}
+
+func (h *handlers) DeleteShortenerBatch(w http.ResponseWriter, r *http.Request) {
+	// получение id пользователя
+	userCode := r.Header.Get(auth.UserCodeKey)
+
+	// Чтение body
+	var buf bytes.Buffer
+	_, err := buf.ReadFrom(r.Body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	var codeArr []string
+	err = json.Unmarshal(buf.Bytes(), &codeArr)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Конвертация
+	s := make([]model.Shortener, 0, len(codeArr))
+	for _, code := range codeArr {
+		s = append(s, model.Shortener{Key: model.ShortenerKey{Code: code}, Data: model.ShortenerData{User: userCode}})
+	}
+
+	// Вызов метода сервиса
+	go func() {
+		h.shortener.DeleteShortenerBatch(s)
+	}()
+
+	w.WriteHeader(http.StatusAccepted)
 }
