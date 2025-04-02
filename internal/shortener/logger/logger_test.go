@@ -9,7 +9,7 @@ import (
 
 func TestLogger_NewZapLog(t *testing.T) {
 	var cfg config.Config
-	cfg.Logger.LogLevel = "1"
+	cfg.Logger.LogLevel = "info"
 
 	_, err := NewZapLog(cfg.Logger)
 	if err != nil {
@@ -19,7 +19,7 @@ func TestLogger_NewZapLog(t *testing.T) {
 
 func ExampleLogger() {
 	var cfg config.Config
-	cfg.Logger.LogLevel = "1"
+	cfg.Logger.LogLevel = "info"
 
 	zaplog, err := NewZapLog(cfg.Logger)
 	if err != nil {
