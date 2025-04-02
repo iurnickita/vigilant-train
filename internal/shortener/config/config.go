@@ -14,6 +14,11 @@ type Config struct {
 	Handlers   handlersConfig.Config
 	Logger     loggerConfig.Config
 	Repository repositoryConfig.Config
+	Pprof      PprofConfig
+}
+
+type PprofConfig struct {
+	ServerAddr string
 }
 
 func GetConfig() Config {
@@ -38,11 +43,13 @@ func GetConfig() Config {
 	if envspath := os.Getenv("FILE_STORAGE_PATH"); envspath != "" {
 		cfg.Repository.Filename = envspath
 	}
-	if envdbase := os.Getenv("DATABASE_DSN"); envdbase != "" { // export DATABASE_DSN="host=localhost user=bob password=bob dbname=shortener sslmode=disable"
+	if envdbase := os.Getenv("DATABASE_DSN"); envdbase != "" {
 		cfg.Repository.DBDsn = envdbase
 	}
 
-	//cfg.Repository.DBDsn = "host=localhost user=bob password=bob dbname=shortener sslmode=disable"
+	/* if cfg.Repository.DBDsn == "" {
+		cfg.Repository.DBDsn = "host=localhost user=bob password=bob dbname=shortener sslmode=disable"
+	} */
 
 	if cfg.Repository.DBDsn != "" {
 		cfg.Repository.StoreType = repositoryConfig.StoreTypeDB
@@ -51,6 +58,8 @@ func GetConfig() Config {
 	} else {
 		cfg.Repository.StoreType = repositoryConfig.StoreTypeVar
 	}
+
+	cfg.Pprof.ServerAddr = "localhost:6060"
 
 	// костыль для кривых данных
 	cfg.Handlers.ServerAddr = strings.TrimPrefix(cfg.Handlers.ServerAddr, "http://")
