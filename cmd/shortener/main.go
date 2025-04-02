@@ -8,9 +8,7 @@ import (
 	"github.com/iurnickita/vigilant-train/internal/shortener/logger"
 	"github.com/iurnickita/vigilant-train/internal/shortener/repository"
 	"github.com/iurnickita/vigilant-train/internal/shortener/service"
-
-	"net/http"
-	_ "net/http/pprof"
+	//_ "net/http/pprof"
 )
 
 func main() {
@@ -35,7 +33,7 @@ func run() error {
 	shortenerService := service.NewShortener(store)
 
 	// pprof run
-	go http.ListenAndServe(cfg.Pprof.ServerAddr, nil)
+	//go http.ListenAndServe(cfg.Pprof.ServerAddr, nil)
 
 	return handlers.Serve(cfg.Handlers, shortenerService, zaplog)
 	// ловить ошибку, Defer db.close
