@@ -35,22 +35,6 @@ func getUserCode(w http.ResponseWriter, r *http.Request) (string, error) {
 	return userCode, nil
 }
 
-func getUserCodeReadOnly(r *http.Request) (string, error) {
-
-	// куки пользователя
-	var userCode string
-	tokenCookie, err := r.Cookie(cookieUserToken)
-	if err != nil {
-		return "", err
-	} else {
-		userCode, err = token.GetUserCode(tokenCookie.Value)
-		if err != nil {
-			return "", err
-		}
-	}
-	return userCode, nil
-}
-
 func GetNewUserCode() string {
 	return rand.String(4)
 }

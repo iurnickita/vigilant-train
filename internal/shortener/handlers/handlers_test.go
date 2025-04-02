@@ -69,3 +69,49 @@ func TestHandlers(t *testing.T) {
 	}
 
 }
+
+func BenchmarkHandlers(b *testing.B) {
+	tests := []struct {
+		name string
+		url  string
+	}{
+		{
+			name: "test #1",
+			url:  "https://practicum.yandex.ru/",
+		}, {
+			name: "test #2",
+			url:  "https://ya.ru/",
+		},
+	}
+
+	store, _ := repository.NewStore(repositoryConfig.Config{StoreType: repositoryConfig.StoreTypeVar})
+	shortenerService := service.NewShortener(store)
+	h := newHandlers(shortenerService, "localhost:8080", zap.NewNop())
+
+	// Сброс таймера
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		for _, test := range tests {
+
+			// запрос короткой ссылки
+			setbody := strings.NewReader(test.url)
+			setr := httptest.NewRequest(http.MethodPost, "/", setbody)
+			setw := httptest.NewRecorder()
+			h.SetShortener(setw, setr)
+
+			// обработка ответа
+			setresult := setw.Result()
+			setresultbody, _ := io.ReadAll(setresult.Body)
+			setresult.Body.Close()
+
+			// переход по короткой ссылке
+			lastslashidx := strings.LastIndexByte(string(setresultbody), '/')
+			gettarget := string(setresultbody[lastslashidx+1:])
+			getr := httptest.NewRequest(http.MethodGet, "/", nil)
+			getr.SetPathValue("code", gettarget)
+			getw := httptest.NewRecorder()
+			h.GetShortener(getw, getr)
+		}
+	}
+}

@@ -11,6 +11,7 @@ import (
 	"github.com/iurnickita/vigilant-train/internal/shortener/repository"
 )
 
+// Service представляет собой слой основлной логики
 type Service interface {
 	GetShortener(code string) (model.Shortener, error)
 	SetShortener(s model.Shortener) (model.Shortener, error)

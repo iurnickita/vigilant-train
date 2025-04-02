@@ -14,6 +14,11 @@ type Config struct {
 	Handlers   handlersConfig.Config
 	Logger     loggerConfig.Config
 	Repository repositoryConfig.Config
+	Pprof      PprofConfig
+}
+
+type PprofConfig struct {
+	ServerAddr string
 }
 
 func GetConfig() Config {
@@ -42,7 +47,9 @@ func GetConfig() Config {
 		cfg.Repository.DBDsn = envdbase
 	}
 
-	//cfg.Repository.DBDsn = "host=localhost user=bob password=bob dbname=shortener sslmode=disable"
+	if cfg.Repository.DBDsn == "" {
+		cfg.Repository.DBDsn = "host=localhost user=bob password=bob dbname=shortener sslmode=disable"
+	}
 
 	if cfg.Repository.DBDsn != "" {
 		cfg.Repository.StoreType = repositoryConfig.StoreTypeDB
@@ -51,6 +58,8 @@ func GetConfig() Config {
 	} else {
 		cfg.Repository.StoreType = repositoryConfig.StoreTypeVar
 	}
+
+	cfg.Pprof.ServerAddr = "localhost:6060"
 
 	// костыль для кривых данных
 	cfg.Handlers.ServerAddr = strings.TrimPrefix(cfg.Handlers.ServerAddr, "http://")
