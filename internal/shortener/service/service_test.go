@@ -20,7 +20,7 @@ func TestService_NewShortener(t *testing.T) {
 	}
 }
 
-func ExampleService_NewShortener() {
+func ExampleService() {
 	cfg := config.GetConfig()
 
 	store, err := repository.NewStore(cfg.Repository)
