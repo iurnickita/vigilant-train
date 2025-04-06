@@ -29,6 +29,7 @@ func GetConfig() Config {
 	flag.StringVar(&cfg.Logger.LogLevel, "l", "info", "log level")
 	flag.StringVar(&cfg.Repository.Filename, "f", "", "file path")
 	flag.StringVar(&cfg.Repository.DBDsn, "d", "", "database dsn")
+	flag.StringVar(&cfg.Pprof.ServerAddr, "p", "", "database dsn") // "localhost:6060" - не заполняю по умолчанию, потому что занятый порт мешает тестам
 	flag.Parse()
 
 	if envsrv := os.Getenv("SERVER_ADDRESS"); envsrv != "" {
@@ -58,8 +59,6 @@ func GetConfig() Config {
 	} else {
 		cfg.Repository.StoreType = repositoryConfig.StoreTypeVar
 	}
-
-	cfg.Pprof.ServerAddr = "localhost:6060"
 
 	// костыль для кривых данных
 	cfg.Handlers.ServerAddr = strings.TrimPrefix(cfg.Handlers.ServerAddr, "http://")

@@ -3,12 +3,14 @@ package main
 import (
 	"log"
 
+	"net/http"
+	_ "net/http/pprof"
+
 	"github.com/iurnickita/vigilant-train/internal/shortener/config"
 	"github.com/iurnickita/vigilant-train/internal/shortener/handlers"
 	"github.com/iurnickita/vigilant-train/internal/shortener/logger"
 	"github.com/iurnickita/vigilant-train/internal/shortener/repository"
 	"github.com/iurnickita/vigilant-train/internal/shortener/service"
-	//_ "net/http/pprof"
 )
 
 func main() {
@@ -33,7 +35,9 @@ func run() error {
 	shortenerService := service.NewShortener(store)
 
 	// pprof run
-	//go http.ListenAndServe(cfg.Pprof.ServerAddr, nil)
+	if cfg.Pprof.ServerAddr != "" {
+		go http.ListenAndServe(cfg.Pprof.ServerAddr, nil)
+	}
 
 	return handlers.Serve(cfg.Handlers, shortenerService, zaplog)
 	// ловить ошибку, Defer db.close
