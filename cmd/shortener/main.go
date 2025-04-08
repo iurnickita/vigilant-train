@@ -1,10 +1,17 @@
+// Shortener - Сервис сокращения URL
 package main
 
 import (
 	"log"
-
 	"net/http"
 	_ "net/http/pprof"
+
+	"golang.org/x/tools/go/analysis"
+	"golang.org/x/tools/go/analysis/multichecker"
+	"golang.org/x/tools/go/analysis/passes/printf"
+	"golang.org/x/tools/go/analysis/passes/shadow"
+	"golang.org/x/tools/go/analysis/passes/structtag"
+	"honnef.co/go/tools/staticcheck"
 
 	"github.com/iurnickita/vigilant-train/internal/shortener/config"
 	"github.com/iurnickita/vigilant-train/internal/shortener/handlers"
@@ -19,19 +26,49 @@ func main() {
 	}
 }
 
+// Run service
 func run() error {
+	// Analysis
+	// analysis/passes
+	mychecks := []*analysis.Analyzer{printf.Analyzer,
+		shadow.Analyzer,
+		structtag.Analyzer}
+	// staticcheck
+	for _, v := range staticcheck.Analyzers {
+		// Проверки класса SA
+		if v.Analyzer.Name[0:2] == "SA" {
+			mychecks = append(mychecks, v.Analyzer)
+		}
+		// Проверки остальных классов
+		// "S1028" Simplify error construction with fmt.Errorf
+		// "ST1016" Use consistent method receiver names
+		if v.Analyzer.Name == "S1028" || v.Analyzer.Name == "ST1016" {
+			mychecks = append(mychecks, v.Analyzer)
+		}
+	}
+	// Другие анализаторы
+	// 	возникли затруднения. Все попадающиеся анализаторы сделаны под golangci
+	// Собственный анализатор
+	//	...
+
+	multichecker.Main(mychecks...)
+
+	// Config
 	cfg := config.GetConfig()
 
+	// Log
 	zaplog, err := logger.NewZapLog(cfg.Logger)
 	if err != nil {
 		return err
 	}
 
+	// Store
 	store, err := repository.NewStore(cfg.Repository)
 	if err != nil {
 		return err
 	}
 
+	// Service
 	shortenerService := service.NewShortener(store)
 
 	// pprof run
@@ -39,6 +76,7 @@ func run() error {
 		go http.ListenAndServe(cfg.Pprof.ServerAddr, nil)
 	}
 
+	// Server run
 	return handlers.Serve(cfg.Handlers, shortenerService, zaplog)
 	// ловить ошибку, Defer db.close
 }

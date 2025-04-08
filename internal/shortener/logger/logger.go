@@ -1,3 +1,4 @@
+// Пакет logger. Журнал
 package logger
 
 import (
@@ -5,22 +6,23 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/iurnickita/vigilant-train/internal/shortener/logger/config"
 	"go.uber.org/zap"
+
+	"github.com/iurnickita/vigilant-train/internal/shortener/logger/config"
 )
 
-// NewZapLog создает объект zap-логера
+// NewZapLog создает объект zap-логгера
 func NewZapLog(cfg config.Config) (*zap.Logger, error) {
 	// преобразуем текстовый уровень логирования в zap.AtomicLevel
 	lvl, err := zap.ParseAtomicLevel(cfg.LogLevel)
 	if err != nil {
 		return nil, err
 	}
-	// создаём новую конфигурацию логера
+	// создаём новую конфигурацию логгера
 	zapcfg := zap.NewProductionConfig()
 	// устанавливаем уровень
 	zapcfg.Level = lvl
-	// создаём логер на основе конфигурации
+	// создаём логгер на основе конфигурации
 	zl, err := zapcfg.Build()
 	if err != nil {
 		return nil, err
@@ -29,7 +31,7 @@ func NewZapLog(cfg config.Config) (*zap.Logger, error) {
 	return zl, nil
 }
 
-// RequestLogMdlw middleware-логер для входящих HTTP-запросов.
+// RequestLogMdlw middleware-логгер для входящих HTTP-запросов.
 func RequestLogMdlw(h http.HandlerFunc, zaplog *zap.Logger) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
@@ -53,6 +55,7 @@ func RequestLogMdlw(h http.HandlerFunc, zaplog *zap.Logger) http.HandlerFunc {
 	})
 }
 
+// responseWriterLogger - оборачивает http.ResponseWriter дополнительным слоем логгирования
 type responseWriterLogger struct {
 	http.ResponseWriter
 	statusCode int

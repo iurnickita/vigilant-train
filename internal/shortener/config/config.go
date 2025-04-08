@@ -1,3 +1,4 @@
+// Пакет config. Конфигурация с помощью флагов/переменных среды/значений по умолчанию
 package config
 
 import (
@@ -10,6 +11,7 @@ import (
 	repositoryConfig "github.com/iurnickita/vigilant-train/internal/shortener/repository/config"
 )
 
+// Config - общая конфигурация
 type Config struct {
 	Handlers   handlersConfig.Config
 	Logger     loggerConfig.Config
@@ -17,10 +19,12 @@ type Config struct {
 	Pprof      PprofConfig
 }
 
+// PprofConfig - конфигурация профилировщика
 type PprofConfig struct {
 	ServerAddr string
 }
 
+// GetConfig собирает конфигурацию сервиса
 func GetConfig() Config {
 	cfg := Config{}
 
