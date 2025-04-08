@@ -1,3 +1,4 @@
+// Пакет handlers. Обработчики http
 package handlers
 
 import (
@@ -9,6 +10,8 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"go.uber.org/zap"
+
 	"github.com/iurnickita/vigilant-train/internal/shortener/auth"
 	"github.com/iurnickita/vigilant-train/internal/shortener/gzip"
 	"github.com/iurnickita/vigilant-train/internal/shortener/handlers/config"
@@ -16,9 +19,9 @@ import (
 	"github.com/iurnickita/vigilant-train/internal/shortener/model"
 	"github.com/iurnickita/vigilant-train/internal/shortener/repository"
 	"github.com/iurnickita/vigilant-train/internal/shortener/service"
-	"go.uber.org/zap"
 )
 
+// Serve - запуск сервера
 func Serve(cfg config.Config, shortener service.Service, zaplog *zap.Logger) error {
 	h := newHandlers(shortener, cfg.BaseAddr, zaplog)
 	router, _ := h.newRouter()
@@ -32,6 +35,7 @@ func Serve(cfg config.Config, shortener service.Service, zaplog *zap.Logger) err
 
 }
 
+// handlers. Обработчики http
 type handlers struct {
 	shortener service.Service
 	baseaddr  string
@@ -46,6 +50,8 @@ func newHandlers(shortener service.Service, baseaddr string, zaplog *zap.Logger)
 	}
 }
 
+// newRouter формирует mux роутер
+// здесь обработчики привязываются к эндпоинтам и добавляются все необходимые middleware
 func (h *handlers) newRouter() (*http.ServeMux, *chi.Mux) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /{code}", logger.RequestLogMdlw(gzip.GzipMiddleware(h.GetShortener), h.zaplog))
@@ -61,6 +67,7 @@ func (h *handlers) newRouter() (*http.ServeMux, *chi.Mux) {
 	return mux, chi
 }
 
+// Обработчик GetShortener перенаправляет по короткой ссылке
 func (h *handlers) GetShortener(w http.ResponseWriter, r *http.Request) {
 	code := r.PathValue("code")
 
@@ -77,6 +84,7 @@ func (h *handlers) GetShortener(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, resp.Data.URL, http.StatusTemporaryRedirect)
 }
 
+// Обработчик SetShortener создает короткую ссылку
 func (h *handlers) SetShortener(w http.ResponseWriter, r *http.Request) {
 	url, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -104,14 +112,17 @@ func (h *handlers) SetShortener(w http.ResponseWriter, r *http.Request) {
 	io.WriteString(w, fmt.Sprintf("http://%s/%s", h.baseaddr, resp.Key.Code))
 }
 
+// Обработчик SetShortenerJSON: JSON запроса с исходным URL
 type RawURLJSON struct {
 	URL string `json:"url"`
 }
 
+// Обработчик SetShortenerJSON: JSON ответа с короткой ссылкой
 type ShortURLJSON struct {
 	Result string `json:"result"`
 }
 
+// Обработчик SetShortenerJSON создает короткую ссылку
 func (h *handlers) SetShortenerJSON(w http.ResponseWriter, r *http.Request) {
 	var buf bytes.Buffer
 	_, err := buf.ReadFrom(r.Body)
@@ -156,18 +167,25 @@ func (h *handlers) SetShortenerJSON(w http.ResponseWriter, r *http.Request) {
 	w.Write(respJSON)
 }
 
+// Обработчик SetShortenerJSONBatch: JSON запроса с исходным URL
 type SetShortenerJSONBatchRRow struct {
 	ID     string `json:"correlation_id"`
 	RawURL string `json:"original_url"`
 }
+
+// Обработчик SetShortenerJSONBatch: JSON запроса с исходным URL (набор)
 type SetShortenerJSONBatchR []SetShortenerJSONBatchRRow
 
+// Обработчик SetShortenerJSONBatch: JSON ответа с коротким URL
 type SetShortenerJSONBatchWRow struct {
 	ID       string `json:"correlation_id"`
 	ShortURL string `json:"short_url"`
 }
+
+// Обработчик SetShortenerJSONBatch: JSON ответа с коротким URL (набор)
 type SetShortenerJSONBatchW []SetShortenerJSONBatchWRow
 
+// Обработчик SetShortenerJSONBatch создает короткую ссылку для набора URL
 func (h *handlers) SetShortenerJSONBatch(w http.ResponseWriter, r *http.Request) {
 	var buf bytes.Buffer
 	_, err := buf.ReadFrom(r.Body)
@@ -231,6 +249,7 @@ func (h *handlers) SetShortenerJSONBatch(w http.ResponseWriter, r *http.Request)
 
 }
 
+// Обработчик Ping проверяет состояние сервера
 func (h *handlers) Ping(w http.ResponseWriter, r *http.Request) {
 	err := h.shortener.Ping()
 	if err != nil {
@@ -238,11 +257,13 @@ func (h *handlers) Ping(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// Обработчик GetUserURLs: JSON ответа с коротким URL
 type GetUserURLsJSON struct {
 	ShortURL    string `json:"short_url"`
 	OriginalURL string `json:"original_url"`
 }
 
+// Обработчик GetUserURLs возвращает все ссылки, добавленные пользователем
 func (h *handlers) GetUserURLs(w http.ResponseWriter, r *http.Request) {
 	userCode := r.Header.Get(auth.UserCodeKey)
 
@@ -271,6 +292,7 @@ func (h *handlers) GetUserURLs(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// Обработчик DeleteShortenerBatch удаление набора ссылок
 func (h *handlers) DeleteShortenerBatch(w http.ResponseWriter, r *http.Request) {
 	// получение id пользователя
 	userCode := r.Header.Get(auth.UserCodeKey)

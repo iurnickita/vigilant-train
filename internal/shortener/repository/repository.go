@@ -1,3 +1,4 @@
+// Пакет repository. Хранилище данных
 package repository
 
 import (
@@ -17,17 +18,17 @@ import (
 	"github.com/iurnickita/vigilant-train/internal/shortener/repository/config"
 )
 
-// Интерфейс
-
+// Repository - интерфейс хранилища
 type Repository interface {
-	GetShortener(code string) (model.Shortener, error)
-	SetShortener(ctx context.Context, s model.Shortener) (model.Shortener, error)
-	SetShortenerBatch(ctx context.Context, s []model.Shortener) ([]model.Shortener, error)
-	Ping() error
-	GetShortenerBatch(ctx context.Context, userCode string) ([]model.Shortener, error)
-	DeleteShortenerBatch(ctx context.Context, s []model.Shortener) error
+	GetShortener(code string) (model.Shortener, error)                                     // GetShortener читает короткую ссылку
+	SetShortener(ctx context.Context, s model.Shortener) (model.Shortener, error)          // SetShortener создает короткую ссылку
+	SetShortenerBatch(ctx context.Context, s []model.Shortener) ([]model.Shortener, error) // SetShortenerBatch создает короткую ссылку для набора данных
+	Ping() error                                                                           // Ping
+	GetShortenerBatch(ctx context.Context, userCode string) ([]model.Shortener, error)     // GetShortenerBatch возвращает все ссылки, добавленные пользователем
+	DeleteShortenerBatch(ctx context.Context, s []model.Shortener) error                   // DeleteShortenerBatch удаляет короткую ссылку
 }
 
+// NewStore возвращает одну из сущестующих реализаций хранилища в зависимости от конфигурации сервиса
 func NewStore(cfg config.Config) (Repository, error) {
 	switch cfg.StoreType {
 	case config.StoreTypeFile:
@@ -42,18 +43,19 @@ func NewStore(cfg config.Config) (Repository, error) {
 	return NewStoreVar(cfg)
 }
 
+// Ошибки пакета
 var (
 	ErrGetShortenerNotFound      = errors.New("data not found")
 	ErrSetShortenerAlreadyExists = errors.New("url already exists")
 	ErrGetShortenerGone          = errors.New("code is deleted")
 )
 
+// newErrGetShortenerNotFound - подробная ошибка NotFound
 func newErrGetShortenerNotFound(code string) error {
 	return fmt.Errorf("%w for code = %s", ErrGetShortenerNotFound, code)
 }
 
-// Реализация с хранением в переменной
-
+// StoreVar - Реализация с хранением в переменной
 type StoreVar struct {
 	mux       *sync.Mutex
 	shortener map[model.ShortenerKey]model.ShortenerData
@@ -135,8 +137,7 @@ func (store *StoreVar) DeleteShortenerBatch(_ context.Context, s []model.Shorten
 	return nil
 }
 
-// Реализация с хранением в файле
-
+// StoreFile - Реализация с хранением в файле
 type StoreFile struct {
 	mux       *sync.Mutex
 	shortener map[model.ShortenerKey]model.ShortenerData
@@ -259,8 +260,7 @@ func (store *StoreFile) DeleteShortenerBatch(_ context.Context, s []model.Shorte
 	return nil
 }
 
-// Реализация с хранением в базе данных
-
+// StoreDB - Реализация с хранением в базе данных
 type StoreDB struct {
 	database *sql.DB
 }

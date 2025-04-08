@@ -1,3 +1,4 @@
+// Пакет service. Сервис
 package service
 
 import (
@@ -11,15 +12,17 @@ import (
 	"github.com/iurnickita/vigilant-train/internal/shortener/repository"
 )
 
+// Service - интерфейс сервиса
 type Service interface {
-	GetShortener(code string) (model.Shortener, error)
-	SetShortener(s model.Shortener) (model.Shortener, error)
-	SetShortenerBatch(s []model.Shortener) ([]model.Shortener, error)
-	Ping() error
-	GetShortnerBatchUser(userCode string) ([]model.Shortener, error)
-	DeleteShortenerBatch(s []model.Shortener) error
+	GetShortener(code string) (model.Shortener, error)                // GetShortener читает короткую ссылку
+	SetShortener(s model.Shortener) (model.Shortener, error)          // SetShortener создает короткую ссылку
+	SetShortenerBatch(s []model.Shortener) ([]model.Shortener, error) // SetShortenerBatch создает короткую ссылку для набора данных
+	Ping() error                                                      // Ping
+	GetShortnerBatchUser(userCode string) ([]model.Shortener, error)  // GetShortenerBatch возвращает все ссылки, добавленные пользователем
+	DeleteShortenerBatch(s []model.Shortener) error                   // DeleteShortenerBatch удаляет короткую ссылку
 }
 
+// Shortener - Сервис сокращения URL
 type Shortener struct {
 	store    repository.Repository
 	toDelete chan []model.Shortener
@@ -38,6 +41,7 @@ func NewShortener(store repository.Repository) *Shortener {
 	return &shortener
 }
 
+// Ошибки пакета
 var (
 	ErrGetShortenerInvalidRequest = errors.New("invalid get Shortener request")
 	ErrRepoFailed                 = errors.New("repo failed")
