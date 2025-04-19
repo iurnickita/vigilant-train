@@ -1,3 +1,4 @@
+// Пакет gzip. Сжатие данных.
 package gzip
 
 import (
@@ -14,6 +15,7 @@ type compressWriter struct {
 	zw *gzip.Writer
 }
 
+// newCompressWriter - конструктор compressWriter
 func newCompressWriter(w http.ResponseWriter) *compressWriter {
 	return &compressWriter{
 		w:  w,
@@ -48,6 +50,7 @@ type compressReader struct {
 	zr *gzip.Reader
 }
 
+// newCompressReader - конструктор compressReader
 func newCompressReader(r io.ReadCloser) (*compressReader, error) {
 	zr, err := gzip.NewReader(r)
 	if err != nil {
@@ -71,6 +74,7 @@ func (c *compressReader) Close() error {
 	return c.zr.Close()
 }
 
+// GzipMiddleware - middleware сжатия для http-хендлеров
 func GzipMiddleware(h http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// по умолчанию устанавливаем оригинальный http.ResponseWriter как тот,
