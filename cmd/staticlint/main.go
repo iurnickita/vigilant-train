@@ -1,6 +1,10 @@
+// Анализаторы. Пакет main.
+// Реализация analysis/multichecker
 package main
 
 import (
+	"go/ast"
+
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/multichecker"
 	"golang.org/x/tools/go/analysis/passes/printf"
@@ -29,9 +33,48 @@ func main() {
 		}
 	}
 	// Другие анализаторы
-	// 	возникли затруднения. Все попадающиеся анализаторы сделаны под golangci
+	// 		возникли затруднения. Все попадающиеся анализаторы сделаны под golangci
+
 	// Собственный анализатор
-	//	...
+	mychecks = append(mychecks, OsExitAnalyzer)
 
 	multichecker.Main(mychecks...)
+}
+
+// Анализатор OsExitAnalyzer проверяет отстуствие прямого вызова os.Exit() в функции main
+var OsExitAnalyzer = &analysis.Analyzer{
+	Name: "exitcheck",
+	Doc:  "check for os.Exit() is not called from main()",
+	Run:  runOsExitAnalyzer,
+}
+
+func runOsExitAnalyzer(pass *analysis.Pass) (interface{}, error) {
+	for _, file := range pass.Files {
+		if file.Name.Name != "main" {
+			continue
+		}
+		ast.Inspect(file, func(node ast.Node) bool {
+			switch x := node.(type) {
+			case *ast.ExprStmt:
+				if call, ok := x.X.(*ast.CallExpr); ok {
+					if isOsExit(call) {
+						pass.Reportf(x.Pos(), "call os.Exit() from main function")
+					}
+				}
+			}
+			return true
+		})
+	}
+	return nil, nil
+}
+
+func isOsExit(call *ast.CallExpr) bool {
+	if s, ok := call.Fun.(*ast.SelectorExpr); ok {
+		if sX, ok := s.X.(*ast.Ident); ok {
+			if sX.Name == "os" && s.Sel.Name == "Exit" {
+				return true
+			}
+		}
+	}
+	return false
 }
