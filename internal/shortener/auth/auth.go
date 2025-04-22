@@ -1,3 +1,4 @@
+// Пакет auth аутентификация
 package auth
 
 import (
@@ -7,16 +8,20 @@ import (
 	"github.com/iurnickita/vigilant-train/internal/shortener/token"
 )
 
+// UserCodeKey http-ключ для кода пользователя (внутренне использование)
 const UserCodeKey = "userCode"
+
+// cookieUserToken ключ cookie для токена пользователя (внешнее использование)
 const cookieUserToken = "shortenerUserToken"
 
+// getUserCode получает/присваивает код пользователя
 func getUserCode(w http.ResponseWriter, r *http.Request) (string, error) {
 
 	// куки пользователя
 	var userCode string
 	tokenCookie, err := r.Cookie(cookieUserToken)
 	if err != nil {
-		userCode = GetNewUserCode()
+		userCode = getNewUserCode()
 		tokenString, err := token.BuildJWTString(userCode)
 		if err != nil {
 			return "", err
@@ -35,26 +40,12 @@ func getUserCode(w http.ResponseWriter, r *http.Request) (string, error) {
 	return userCode, nil
 }
 
-func getUserCodeReadOnly(r *http.Request) (string, error) {
-
-	// куки пользователя
-	var userCode string
-	tokenCookie, err := r.Cookie(cookieUserToken)
-	if err != nil {
-		return "", err
-	} else {
-		userCode, err = token.GetUserCode(tokenCookie.Value)
-		if err != nil {
-			return "", err
-		}
-	}
-	return userCode, nil
-}
-
-func GetNewUserCode() string {
+// GetNewUserCode генерирует новый код пользователя
+func getNewUserCode() string {
 	return rand.String(4)
 }
 
+// AuthMiddleware прослойка аутентификации для хендлеров
 func AuthMiddleware(h http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// получение id пользователя

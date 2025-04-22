@@ -1,9 +1,11 @@
+// Пакет netutils содержит простые сетевые интсрументы
 package netutils
 
 import (
 	"net"
 )
 
+// GetFreePort - получить свободный порт localhost
 func GetFreePort() (int, error) {
 	addr, err := net.ResolveTCPAddr("tcp", "localhost:0")
 	if err != nil {

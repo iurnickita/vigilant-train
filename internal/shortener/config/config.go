@@ -1,3 +1,4 @@
+// Пакет config. Конфигурация с помощью флагов/переменных среды/значений по умолчанию
 package config
 
 import (
@@ -10,12 +11,20 @@ import (
 	repositoryConfig "github.com/iurnickita/vigilant-train/internal/shortener/repository/config"
 )
 
+// Config - общая конфигурация
 type Config struct {
 	Handlers   handlersConfig.Config
 	Logger     loggerConfig.Config
 	Repository repositoryConfig.Config
+	Pprof      PprofConfig
 }
 
+// PprofConfig - конфигурация профилировщика
+type PprofConfig struct {
+	ServerAddr string
+}
+
+// GetConfig собирает конфигурацию сервиса
 func GetConfig() Config {
 	cfg := Config{}
 
@@ -24,6 +33,7 @@ func GetConfig() Config {
 	flag.StringVar(&cfg.Logger.LogLevel, "l", "info", "log level")
 	flag.StringVar(&cfg.Repository.Filename, "f", "", "file path")
 	flag.StringVar(&cfg.Repository.DBDsn, "d", "", "database dsn")
+	flag.StringVar(&cfg.Pprof.ServerAddr, "p", "", "database dsn") // "localhost:6060" - не заполняю по умолчанию, потому что занятый порт мешает тестам
 	flag.Parse()
 
 	if envsrv := os.Getenv("SERVER_ADDRESS"); envsrv != "" {
@@ -38,11 +48,13 @@ func GetConfig() Config {
 	if envspath := os.Getenv("FILE_STORAGE_PATH"); envspath != "" {
 		cfg.Repository.Filename = envspath
 	}
-	if envdbase := os.Getenv("DATABASE_DSN"); envdbase != "" { // export DATABASE_DSN="host=localhost user=bob password=bob dbname=shortener sslmode=disable"
+	if envdbase := os.Getenv("DATABASE_DSN"); envdbase != "" {
 		cfg.Repository.DBDsn = envdbase
 	}
 
-	//cfg.Repository.DBDsn = "host=localhost user=bob password=bob dbname=shortener sslmode=disable"
+	/* if cfg.Repository.DBDsn == "" {
+		cfg.Repository.DBDsn = "host=localhost user=bob password=bob dbname=shortener sslmode=disable"
+	} */
 
 	if cfg.Repository.DBDsn != "" {
 		cfg.Repository.StoreType = repositoryConfig.StoreTypeDB
