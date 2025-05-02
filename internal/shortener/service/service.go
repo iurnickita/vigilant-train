@@ -14,12 +14,18 @@ import (
 
 // Service - интерфейс сервиса
 type Service interface {
-	GetShortener(code string) (model.Shortener, error)                // GetShortener читает короткую ссылку
-	SetShortener(s model.Shortener) (model.Shortener, error)          // SetShortener создает короткую ссылку
-	SetShortenerBatch(s []model.Shortener) ([]model.Shortener, error) // SetShortenerBatch создает короткую ссылку для набора данных
-	Ping() error                                                      // Ping
-	GetShortnerBatchUser(userCode string) ([]model.Shortener, error)  // GetShortenerBatch возвращает все ссылки, добавленные пользователем
-	DeleteShortenerBatch(s []model.Shortener) error                   // DeleteShortenerBatch удаляет короткую ссылку
+	// GetShortener читает короткую ссылку
+	GetShortener(code string) (model.Shortener, error)
+	// SetShortener создает короткую ссылку
+	SetShortener(s model.Shortener) (model.Shortener, error)
+	// SetShortenerBatch создает короткую ссылку для набора данных
+	SetShortenerBatch(s []model.Shortener) ([]model.Shortener, error)
+	// Ping
+	Ping() error
+	// GetShortenerBatch возвращает все ссылки, добавленные пользователем
+	GetShortnerBatchUser(userCode string) ([]model.Shortener, error)
+	// DeleteShortenerBatch удаляет короткую ссылку
+	DeleteShortenerBatch(s []model.Shortener) error
 }
 
 // Shortener - Сервис сокращения URL
@@ -28,6 +34,7 @@ type Shortener struct {
 	toDelete chan []model.Shortener
 }
 
+// NewShortener конструктор
 func NewShortener(store repository.Repository) *Shortener {
 	toDelete := make(chan []model.Shortener, 100)
 
@@ -48,6 +55,7 @@ var (
 	ErrChanToDeleteIsFull         = errors.New("queue to delete is full")
 )
 
+// GetShortener читает короткую ссылку
 func (service *Shortener) GetShortener(code string) (model.Shortener, error) {
 
 	repositoryResp, err := service.store.GetShortener(code)
@@ -60,6 +68,7 @@ func (service *Shortener) GetShortener(code string) (model.Shortener, error) {
 	return repositoryResp, nil
 }
 
+// SetShortener создает короткую ссылку
 func (service *Shortener) SetShortener(s model.Shortener) (model.Shortener, error) {
 	ctx := context.Background()
 
@@ -73,6 +82,7 @@ func (service *Shortener) SetShortener(s model.Shortener) (model.Shortener, erro
 	return storeResp, nil
 }
 
+// SetShortenerBatch создает короткую ссылку для набора данных
 func (service *Shortener) SetShortenerBatch(s []model.Shortener) ([]model.Shortener, error) {
 	ctx := context.Background()
 
@@ -85,10 +95,12 @@ func (service *Shortener) SetShortenerBatch(s []model.Shortener) ([]model.Shorte
 	return storeResp, err
 }
 
+// Ping
 func (service *Shortener) Ping() error {
 	return service.store.Ping()
 }
 
+// GetShortenerBatch возвращает все ссылки, добавленные пользователем
 func (service *Shortener) GetShortnerBatchUser(userCode string) ([]model.Shortener, error) {
 	ctx := context.Background()
 
@@ -99,6 +111,7 @@ func (service *Shortener) GetShortnerBatchUser(userCode string) ([]model.Shorten
 	return service.store.GetShortenerBatch(ctx, userCode)
 }
 
+// DeleteShortenerBatch удаляет короткую ссылку
 func (service *Shortener) DeleteShortenerBatch(s []model.Shortener) error {
 	service.toDelete <- s
 	return nil

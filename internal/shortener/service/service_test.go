@@ -19,14 +19,3 @@ func TestService_NewShortener(t *testing.T) {
 		t.Errorf("NewShortener error")
 	}
 }
-
-func ExampleService() {
-	cfg := config.GetConfig()
-
-	store, err := repository.NewStore(cfg.Repository)
-	if err != nil {
-		//return err
-	}
-	shortenerService := NewShortener(store)
-	shortenerService.Ping()
-}

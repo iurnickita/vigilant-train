@@ -2,6 +2,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	_ "net/http/pprof"
@@ -13,6 +14,12 @@ import (
 	"github.com/iurnickita/vigilant-train/internal/shortener/service"
 )
 
+var (
+	buildVersion string
+	buildDate    string
+	bulidCommit  string
+)
+
 func main() {
 	if err := run(); err != nil {
 		log.Fatal(err)
@@ -21,6 +28,11 @@ func main() {
 
 // Run service
 func run() error {
+	// Флаги сборки (флаги линковщика)
+	fmt.Printf("buildVersion: %s\n", fillEmpty(buildVersion))
+	fmt.Printf("buildDate: %s\n", fillEmpty(buildDate))
+	fmt.Printf("bulidCommit: %s\n", fillEmpty(bulidCommit))
+
 	// Config
 	cfg := config.GetConfig()
 
@@ -49,6 +61,13 @@ func run() error {
 	// ловить ошибку, Defer db.close
 }
 
+func fillEmpty(s string) string {
+	if s == "" {
+		s = "N/A"
+	}
+	return s
+}
+
 // curl -v -X POST -d https://practicum.yandex.ru/ http://localhost:8080/
 // curl -v --json '{"url": "https://practicum.yandex.ru"}' http://localhost:8080/api/shorten
 // curl -v --json '[{"correlation_id": "15", "original_url": "https://www.postgresql.org/docs/current/sql-load.html"}]' http://localhost:8080/api/shorten/batch
@@ -67,3 +86,6 @@ func run() error {
 // go tool pprof -http=":9090" profiles/base.pprof
 // Сравнение результатов
 // go tool pprof -top -diff_base=profiles/base.pprof profiles/result.pprof
+
+// Флаги сборки (флаги линковщика)
+// go run -ldflags "-X main.buildVersion=v1.0.1" main.go

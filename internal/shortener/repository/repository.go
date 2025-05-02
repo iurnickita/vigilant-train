@@ -20,12 +20,18 @@ import (
 
 // Repository - интерфейс хранилища
 type Repository interface {
-	GetShortener(code string) (model.Shortener, error)                                     // GetShortener читает короткую ссылку
-	SetShortener(ctx context.Context, s model.Shortener) (model.Shortener, error)          // SetShortener создает короткую ссылку
-	SetShortenerBatch(ctx context.Context, s []model.Shortener) ([]model.Shortener, error) // SetShortenerBatch создает короткую ссылку для набора данных
-	Ping() error                                                                           // Ping
-	GetShortenerBatch(ctx context.Context, userCode string) ([]model.Shortener, error)     // GetShortenerBatch возвращает все ссылки, добавленные пользователем
-	DeleteShortenerBatch(ctx context.Context, s []model.Shortener) error                   // DeleteShortenerBatch удаляет короткую ссылку
+	// GetShortener читает короткую ссылку
+	GetShortener(code string) (model.Shortener, error)
+	// SetShortener создает короткую ссылку
+	SetShortener(ctx context.Context, s model.Shortener) (model.Shortener, error)
+	// SetShortenerBatch создает короткую ссылку для набора данных
+	SetShortenerBatch(ctx context.Context, s []model.Shortener) ([]model.Shortener, error)
+	// Ping
+	Ping() error
+	// GetShortenerBatch возвращает все ссылки, добавленные пользователем
+	GetShortenerBatch(ctx context.Context, userCode string) ([]model.Shortener, error)
+	// DeleteShortenerBatch удаляет короткую ссылку
+	DeleteShortenerBatch(ctx context.Context, s []model.Shortener) error
 }
 
 // NewStore возвращает одну из сущестующих реализаций хранилища в зависимости от конфигурации сервиса
@@ -61,6 +67,7 @@ type StoreVar struct {
 	shortener map[model.ShortenerKey]model.ShortenerData
 }
 
+// NewStoreVar - конструктор хранилища
 func NewStoreVar(cfg config.Config) (*StoreVar, error) {
 	return &StoreVar{
 		mux:       &sync.Mutex{},
@@ -68,6 +75,7 @@ func NewStoreVar(cfg config.Config) (*StoreVar, error) {
 	}, nil
 }
 
+// GetShortener читает короткую ссылку
 func (store *StoreVar) GetShortener(code string) (model.Shortener, error) {
 	store.mux.Lock()
 	defer store.mux.Unlock()
@@ -83,6 +91,7 @@ func (store *StoreVar) GetShortener(code string) (model.Shortener, error) {
 	}, nil
 }
 
+// SetShortener создает короткую ссылку
 func (store *StoreVar) SetShortener(_ context.Context, s model.Shortener) (model.Shortener, error) {
 	store.mux.Lock()
 	defer store.mux.Unlock()
@@ -104,6 +113,7 @@ func (store *StoreVar) SetShortener(_ context.Context, s model.Shortener) (model
 	return s, nil
 }
 
+// SetShortenerBatch создает короткую ссылку для набора данных
 func (store *StoreVar) SetShortenerBatch(_ context.Context, s []model.Shortener) ([]model.Shortener, error) {
 	var respSBatch []model.Shortener
 	for _, reqS := range s {
@@ -116,10 +126,12 @@ func (store *StoreVar) SetShortenerBatch(_ context.Context, s []model.Shortener)
 	return respSBatch, nil
 }
 
+// Ping
 func (store *StoreVar) Ping() error {
 	return nil
 }
 
+// GetShortenerBatch возвращает все ссылки, добавленные пользователем
 func (store *StoreVar) GetShortenerBatch(_ context.Context, userCode string) ([]model.Shortener, error) {
 	var resp []model.Shortener
 	for key, data := range store.shortener {
@@ -130,6 +142,7 @@ func (store *StoreVar) GetShortenerBatch(_ context.Context, userCode string) ([]
 	return resp, nil
 }
 
+// DeleteShortenerBatch удаляет короткую ссылку
 func (store *StoreVar) DeleteShortenerBatch(_ context.Context, s []model.Shortener) error {
 	for _, s := range s {
 		store.shortener[s.Key] = model.ShortenerData{}
@@ -144,12 +157,14 @@ type StoreFile struct {
 	writer    *bufio.Writer
 }
 
+// FileJSON Структура JSON-файла для хранения
 type FileJSON struct {
 	Code string `json:"code"`
 	URL  string `json:"url"`
 	User string `json:"user"`
 }
 
+// NewStoreFile - конструктор хранилища
 func NewStoreFile(cfg config.Config) (*StoreFile, error) {
 	file, err := os.OpenFile(cfg.Filename, os.O_RDWR|os.O_CREATE, 0666)
 	if err != nil {
@@ -174,6 +189,7 @@ func NewStoreFile(cfg config.Config) (*StoreFile, error) {
 	}, nil
 }
 
+// GetShortener читает короткую ссылку
 func (store *StoreFile) GetShortener(code string) (model.Shortener, error) {
 	store.mux.Lock()
 	defer store.mux.Unlock()
@@ -189,6 +205,7 @@ func (store *StoreFile) GetShortener(code string) (model.Shortener, error) {
 	}, nil
 }
 
+// SetShortener создает короткую ссылку
 func (store *StoreFile) SetShortener(_ context.Context, s model.Shortener) (model.Shortener, error) {
 	store.mux.Lock()
 	defer store.mux.Unlock()
@@ -230,6 +247,7 @@ func (store *StoreFile) SetShortener(_ context.Context, s model.Shortener) (mode
 
 }
 
+// SetShortenerBatch создает короткую ссылку для набора данных
 func (store *StoreFile) SetShortenerBatch(_ context.Context, s []model.Shortener) ([]model.Shortener, error) {
 	var respSBatch []model.Shortener
 	for _, reqS := range s {
@@ -242,10 +260,12 @@ func (store *StoreFile) SetShortenerBatch(_ context.Context, s []model.Shortener
 	return respSBatch, nil
 }
 
+// Ping
 func (store *StoreFile) Ping() error {
 	return nil
 }
 
+// GetShortenerBatch возвращает все ссылки, добавленные пользователем
 func (store *StoreFile) GetShortenerBatch(_ context.Context, userCode string) ([]model.Shortener, error) {
 	var resp []model.Shortener
 	for key, data := range store.shortener {
@@ -256,6 +276,7 @@ func (store *StoreFile) GetShortenerBatch(_ context.Context, userCode string) ([
 	return resp, nil
 }
 
+// DeleteShortenerBatch удаляет короткую ссылку
 func (store *StoreFile) DeleteShortenerBatch(_ context.Context, s []model.Shortener) error {
 	return nil
 }
@@ -265,6 +286,7 @@ type StoreDB struct {
 	database *sql.DB
 }
 
+// NewStoreDB - конструктор хранилища
 func NewStoreDB(cfg config.Config) (*StoreDB, error) {
 	db, err := sql.Open("pgx", cfg.DBDsn)
 	if err != nil {
@@ -288,6 +310,7 @@ func NewStoreDB(cfg config.Config) (*StoreDB, error) {
 	}, nil
 }
 
+// GetShortener читает короткую ссылку
 func (store *StoreDB) GetShortener(code string) (model.Shortener, error) {
 	var url string
 	var delFlag bool
@@ -309,6 +332,7 @@ func (store *StoreDB) GetShortener(code string) (model.Shortener, error) {
 	}, nil
 }
 
+// SetShortener создает короткую ссылку
 func (store *StoreDB) SetShortener(ctx context.Context, s model.Shortener) (model.Shortener, error) {
 	// Проверка: уже существует
 	var oldCode string
@@ -336,6 +360,7 @@ func (store *StoreDB) SetShortener(ctx context.Context, s model.Shortener) (mode
 	return s, nil
 }
 
+// SetShortenerBatch создает короткую ссылку для набора данных
 func (store *StoreDB) SetShortenerBatch(ctx context.Context, s []model.Shortener) ([]model.Shortener, error) {
 
 	tx, err := store.database.Begin()
@@ -379,10 +404,12 @@ func (store *StoreDB) SetShortenerBatch(ctx context.Context, s []model.Shortener
 	return respSBatch, nil
 }
 
+// Ping
 func (store *StoreDB) Ping() error {
 	return store.database.Ping()
 }
 
+// GetShortenerBatch возвращает все ссылки, добавленные пользователем
 func (store *StoreDB) GetShortenerBatch(ctx context.Context, userCode string) ([]model.Shortener, error) {
 	var resp []model.Shortener
 
@@ -411,6 +438,7 @@ func (store *StoreDB) GetShortenerBatch(ctx context.Context, userCode string) ([
 
 }
 
+// DeleteShortenerBatch удаляет короткую ссылку
 func (store *StoreDB) DeleteShortenerBatch(ctx context.Context, s []model.Shortener) error {
 
 	var values []string
