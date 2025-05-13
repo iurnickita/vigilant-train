@@ -26,6 +26,8 @@ type Service interface {
 	GetShortnerBatchUser(userCode string) ([]model.Shortener, error)
 	// DeleteShortenerBatch удаляет короткую ссылку
 	DeleteShortenerBatch(s []model.Shortener) error
+	// GetStats возвращает статистические данные
+	GetStats(ctx context.Context) (model.Stats, error)
 }
 
 // Shortener - Сервис сокращения URL
@@ -135,4 +137,9 @@ func (service *Shortener) flushDeletes() {
 			toDelete = nil
 		}
 	}
+}
+
+// GetStats возвращает статистические данные
+func (service *Shortener) GetStats(ctx context.Context) (model.Stats, error) {
+	return service.store.GetStats(ctx)
 }

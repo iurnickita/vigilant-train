@@ -17,3 +17,9 @@ type ShortenerData struct {
 	URL  string
 	User string
 }
+
+// Stats - статистические данные
+type Stats struct {
+	URLs  int `json:"urls"`
+	Users int `json:"users"`
+}

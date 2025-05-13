@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"github.com/go-chi/chi/v5"
@@ -26,7 +27,7 @@ import (
 
 // Serve - запуск сервера
 func Serve(cfg config.Config, shortener service.Service, zaplog *zap.Logger) error {
-	h := newHandlers(shortener, cfg.BaseAddr, zaplog)
+	h := newHandlers(cfg, shortener, zaplog)
 	router, _ := h.newRouter()
 
 	srv := &http.Server{
@@ -66,15 +67,15 @@ func Serve(cfg config.Config, shortener service.Service, zaplog *zap.Logger) err
 
 // handlers. Обработчики http
 type handlers struct {
+	config    config.Config
 	shortener service.Service
-	baseaddr  string
 	zaplog    *zap.Logger
 }
 
-func newHandlers(shortener service.Service, baseaddr string, zaplog *zap.Logger) *handlers {
+func newHandlers(config config.Config, shortener service.Service, zaplog *zap.Logger) *handlers {
 	return &handlers{
+		config:    config,
 		shortener: shortener,
-		baseaddr:  baseaddr,
 		zaplog:    zaplog,
 	}
 }
@@ -129,7 +130,7 @@ func (h *handlers) SetShortener(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if resp.Key.Code != "" {
 			w.WriteHeader(http.StatusConflict)
-			io.WriteString(w, fmt.Sprintf("http://%s/%s", h.baseaddr, resp.Key.Code))
+			io.WriteString(w, fmt.Sprintf("http://%s/%s", h.config.BaseAddr, resp.Key.Code))
 			return
 		} else {
 			http.Error(w, err.Error(), http.StatusBadRequest)
@@ -138,7 +139,7 @@ func (h *handlers) SetShortener(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusCreated)
-	io.WriteString(w, fmt.Sprintf("http://%s/%s", h.baseaddr, resp.Key.Code))
+	io.WriteString(w, fmt.Sprintf("http://%s/%s", h.config.BaseAddr, resp.Key.Code))
 }
 
 // Обработчик SetShortenerJSON: JSON запроса с исходным URL
@@ -184,7 +185,7 @@ func (h *handlers) SetShortenerJSON(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var shortURL ShortURLJSON
-	shortURL.Result = fmt.Sprintf("http://%s/%s", h.baseaddr, resp.Key.Code)
+	shortURL.Result = fmt.Sprintf("http://%s/%s", h.config.BaseAddr, resp.Key.Code)
 	respJSON, err := json.Marshal(shortURL)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -260,7 +261,7 @@ func (h *handlers) SetShortenerJSONBatch(w http.ResponseWriter, r *http.Request)
 			}
 		}
 		if id != "" {
-			shortURL := fmt.Sprintf("http://%s/%s", h.baseaddr, respRow.Key.Code)
+			shortURL := fmt.Sprintf("http://%s/%s", h.config.BaseAddr, respRow.Key.Code)
 			response = append(response, SetShortenerJSONBatchWRow{ID: id, ShortURL: shortURL})
 		}
 	}
@@ -304,7 +305,7 @@ func (h *handlers) GetUserURLs(w http.ResponseWriter, r *http.Request) {
 
 	var response []GetUserURLsJSON
 	for _, row := range batch {
-		shortURL := fmt.Sprintf("http://%s/%s", h.baseaddr, row.Key.Code)
+		shortURL := fmt.Sprintf("http://%s/%s", h.config.BaseAddr, row.Key.Code)
 		response = append(response, GetUserURLsJSON{ShortURL: shortURL, OriginalURL: row.Data.URL})
 	}
 
@@ -352,4 +353,49 @@ func (h *handlers) DeleteShortenerBatch(w http.ResponseWriter, r *http.Request) 
 	}()
 
 	w.WriteHeader(http.StatusAccepted)
+}
+
+// GetStats возвращает статистические данные
+func (h *handlers) GetStats(w http.ResponseWriter, r *http.Request) {
+	//Доверенная подсеть
+	if h.config.TrustedSubnet == "" {
+		w.WriteHeader(http.StatusForbidden)
+		return
+	}
+	// смотрим заголовок запроса X-Real-IP
+	ipStr := r.Header.Get("X-Real-IP")
+	if ipStr == "" {
+		// если заголовок X-Real-IP пуст, пробуем X-Forwarded-For
+		// этот заголовок содержит адреса отправителя и промежуточных прокси
+		// в виде 203.0.113.195, 70.41.3.18, 150.172.238.178
+		ips := r.Header.Get("X-Forwarded-For")
+		// разделяем цепочку адресов
+		ipStrs := strings.Split(ips, ",")
+		// интересует только первый
+		ipStr = ipStrs[0]
+	}
+	if !(len(ipStr) > len(h.config.TrustedSubnet)) {
+		w.WriteHeader(http.StatusForbidden)
+		return
+	}
+	if h.config.TrustedSubnet != ipStr[:len(h.config.TrustedSubnet)] {
+		w.WriteHeader(http.StatusForbidden)
+		return
+	}
+
+	stats, err := h.shortener.GetStats(r.Context())
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	responseJSON, err := json.Marshal(stats)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(responseJSON)
 }
