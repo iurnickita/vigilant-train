@@ -58,7 +58,6 @@ func run() error {
 
 	// Server run
 	return handlers.Serve(cfg.Handlers, shortenerService, zaplog)
-	// ловить ошибку, Defer db.close
 }
 
 func fillEmpty(s string) string {

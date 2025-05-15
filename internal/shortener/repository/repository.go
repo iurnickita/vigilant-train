@@ -34,6 +34,8 @@ type Repository interface {
 	DeleteShortenerBatch(ctx context.Context, s []model.Shortener) error
 	// GetStats возвращает статистические данные
 	GetStats(ctx context.Context) (model.Stats, error)
+	// Close закрывает соединение
+	Close()
 }
 
 // NewStore возвращает одну из сущестующих реализаций хранилища в зависимости от конфигурации сервиса
@@ -179,10 +181,16 @@ func (store *StoreVar) GetStats(ctx context.Context) (model.Stats, error) {
 	return stats, nil
 }
 
+// Close закрывает соединение
+func (store *StoreVar) Close() {
+
+}
+
 // StoreFile - Реализация с хранением в файле
 type StoreFile struct {
 	mux       *sync.Mutex
 	shortener map[model.ShortenerKey]model.ShortenerData
+	file      *os.File
 	writer    *bufio.Writer
 }
 
@@ -214,6 +222,7 @@ func NewStoreFile(cfg config.Config) (*StoreFile, error) {
 	return &StoreFile{
 		mux:       &sync.Mutex{},
 		shortener: shortener,
+		file:      file,
 		writer:    bufio.NewWriter(file),
 	}, nil
 }
@@ -335,6 +344,12 @@ func (store *StoreFile) GetStats(ctx context.Context) (model.Stats, error) {
 	stats.Users = len(users)
 
 	return stats, nil
+}
+
+// Close закрывает соединение
+func (store *StoreFile) Close() {
+	store.writer.Flush()
+	store.file.Close()
 }
 
 // StoreDB - Реализация с хранением в базе данных
@@ -541,4 +556,9 @@ func (store *StoreDB) GetStats(ctx context.Context) (model.Stats, error) {
 	}
 
 	return stats, nil
+}
+
+// Close закрывает соединение
+func (store *StoreDB) Close() {
+	store.database.Close()
 }

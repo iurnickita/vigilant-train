@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os/signal"
 	"strings"
+	"sync"
 	"syscall"
 
 	"github.com/go-chi/chi/v5"
@@ -40,11 +41,17 @@ func Serve(cfg config.Config, shortener service.Service, zaplog *zap.Logger) err
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
 	defer stop()
 	go func() {
+		// Получение сигнала
 		<-ctx.Done()
+		// Остановка сервера
 		if err := srv.Shutdown(context.Background()); err != nil {
 			zaplog.Info("HTTP server Shutdown error",
 				zap.String("error", err.Error()))
 		}
+		// Ожидание завершения работы handler
+		h.wait()
+		// Остановка сервиса
+		shortener.Shutdown()
 		// сообщаем основному потоку,
 		// что все сетевые соединения обработаны и закрыты
 		close(idleConnsClosed)
@@ -70,6 +77,7 @@ type handlers struct {
 	config    config.Config
 	shortener service.Service
 	zaplog    *zap.Logger
+	wg        sync.WaitGroup
 }
 
 func newHandlers(config config.Config, shortener service.Service, zaplog *zap.Logger) *handlers {
@@ -348,7 +356,9 @@ func (h *handlers) DeleteShortenerBatch(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// Вызов метода сервиса
+	h.wg.Add(1)
 	go func() {
+		defer h.wg.Done()
 		h.shortener.DeleteShortenerBatch(s)
 	}()
 
@@ -398,4 +408,8 @@ func (h *handlers) GetStats(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write(responseJSON)
+}
+
+func (h *handlers) wait() {
+	h.wg.Wait()
 }
