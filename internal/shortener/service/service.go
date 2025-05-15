@@ -147,16 +147,16 @@ L:
 		// Удаление набора из очереди
 		case <-ticker.C:
 			if len(toDelete) == 0 {
+				// Завершение работы
+				if shutdown {
+					break L
+				}
+
 				continue
 			}
 			service.store.DeleteShortenerBatch(ctx, toDelete)
 
 			toDelete = nil
-
-			// Завершение работы
-			if shutdown {
-				break L
-			}
 		}
 	}
 }
