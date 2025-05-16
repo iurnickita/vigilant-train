@@ -32,6 +32,10 @@ type Repository interface {
 	GetShortenerBatch(ctx context.Context, userCode string) ([]model.Shortener, error)
 	// DeleteShortenerBatch удаляет короткую ссылку
 	DeleteShortenerBatch(ctx context.Context, s []model.Shortener) error
+	// GetStats возвращает статистические данные
+	GetStats(ctx context.Context) (model.Stats, error)
+	// Close закрывает соединение
+	Close()
 }
 
 // NewStore возвращает одну из сущестующих реализаций хранилища в зависимости от конфигурации сервиса
@@ -150,10 +154,43 @@ func (store *StoreVar) DeleteShortenerBatch(_ context.Context, s []model.Shorten
 	return nil
 }
 
+// GetStats возвращает статистические данные
+func (store *StoreVar) GetStats(ctx context.Context) (model.Stats, error) {
+	var stats model.Stats
+
+	// кол-во сокращенных ссылок
+	stats.URLs = len(store.shortener)
+
+	// кол-во пользователей
+	// *здесь не помешал бы бинарный поиск
+	users := make([]string, 0, 10)
+	for _, sh := range store.shortener {
+		exists := false
+		for _, us := range users {
+			if us == sh.User {
+				exists = true
+				break
+			}
+		}
+		if !exists {
+			users = append(users, sh.User)
+		}
+	}
+	stats.Users = len(users)
+
+	return stats, nil
+}
+
+// Close закрывает соединение
+func (store *StoreVar) Close() {
+
+}
+
 // StoreFile - Реализация с хранением в файле
 type StoreFile struct {
 	mux       *sync.Mutex
 	shortener map[model.ShortenerKey]model.ShortenerData
+	file      *os.File
 	writer    *bufio.Writer
 }
 
@@ -185,6 +222,7 @@ func NewStoreFile(cfg config.Config) (*StoreFile, error) {
 	return &StoreFile{
 		mux:       &sync.Mutex{},
 		shortener: shortener,
+		file:      file,
 		writer:    bufio.NewWriter(file),
 	}, nil
 }
@@ -279,6 +317,39 @@ func (store *StoreFile) GetShortenerBatch(_ context.Context, userCode string) ([
 // DeleteShortenerBatch удаляет короткую ссылку
 func (store *StoreFile) DeleteShortenerBatch(_ context.Context, s []model.Shortener) error {
 	return nil
+}
+
+// GetStats возвращает статистические данные
+func (store *StoreFile) GetStats(ctx context.Context) (model.Stats, error) {
+	var stats model.Stats
+
+	// кол-во сокращенных ссылок
+	stats.URLs = len(store.shortener)
+
+	// кол-во пользователей
+	// *здесь не помешал бы бинарный поиск
+	users := make([]string, 0, 10)
+	for _, sh := range store.shortener {
+		exists := false
+		for _, us := range users {
+			if us == sh.User {
+				exists = true
+				break
+			}
+		}
+		if !exists {
+			users = append(users, sh.User)
+		}
+	}
+	stats.Users = len(users)
+
+	return stats, nil
+}
+
+// Close закрывает соединение
+func (store *StoreFile) Close() {
+	store.writer.Flush()
+	store.file.Close()
 }
 
 // StoreDB - Реализация с хранением в базе данных
@@ -462,4 +533,32 @@ func (store *StoreDB) DeleteShortenerBatch(ctx context.Context, s []model.Shorte
 	_, err := store.database.ExecContext(ctx, query, args...)
 
 	return err
+}
+
+// GetStats возвращает статистические данные
+func (store *StoreDB) GetStats(ctx context.Context) (model.Stats, error) {
+	var stats model.Stats
+
+	row := store.database.QueryRowContext(ctx,
+		"SELECT count(code)"+
+			"FROM shortener"+
+			"WHERE del_flag = FALSE"+
+			"LIMIT 1")
+	if err := row.Scan(stats.URLs); err != nil {
+		return model.Stats{}, err
+	}
+
+	row = store.database.QueryRowContext(ctx,
+		"SELECT count(sh.uuid)"+
+			"FROM (SELECT DISTINCT uuid FROM shortener) sh")
+	if err := row.Scan(stats.Users); err != nil {
+		return model.Stats{}, err
+	}
+
+	return stats, nil
+}
+
+// Close закрывает соединение
+func (store *StoreDB) Close() {
+	store.database.Close()
 }

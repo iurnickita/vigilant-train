@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	handlersConfig "github.com/iurnickita/vigilant-train/internal/shortener/handlers/config"
 	"github.com/iurnickita/vigilant-train/internal/shortener/repository"
 	repositoryConfig "github.com/iurnickita/vigilant-train/internal/shortener/repository/config"
 	"github.com/iurnickita/vigilant-train/internal/shortener/service"
@@ -31,7 +32,8 @@ func TestHandlers(t *testing.T) {
 
 	store, _ := repository.NewStore(repositoryConfig.Config{StoreType: repositoryConfig.StoreTypeVar})
 	shortenerService := service.NewShortener(store)
-	h := newHandlers(shortenerService, "localhost:8080", zap.NewNop())
+	cfg := handlersConfig.Config{BaseAddr: "localhost:8080"}
+	h := newHandlers(cfg, shortenerService, zap.NewNop())
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -86,7 +88,8 @@ func BenchmarkHandlers(b *testing.B) {
 
 	store, _ := repository.NewStore(repositoryConfig.Config{StoreType: repositoryConfig.StoreTypeVar})
 	shortenerService := service.NewShortener(store)
-	h := newHandlers(shortenerService, "localhost:8080", zap.NewNop())
+	cfg := handlersConfig.Config{BaseAddr: "localhost:8080"}
+	h := newHandlers(cfg, shortenerService, zap.NewNop())
 
 	// Сброс таймера
 	b.ResetTimer()
