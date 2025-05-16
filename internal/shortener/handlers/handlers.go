@@ -3,11 +3,14 @@ package handlers
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"os/signal"
+	"syscall"
 
 	"github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
@@ -31,8 +34,34 @@ func Serve(cfg config.Config, shortener service.Service, zaplog *zap.Logger) err
 		Handler: router,
 	}
 
-	return srv.ListenAndServe()
+	// graceful shutdown
+	idleConnsClosed := make(chan struct{})
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
+	defer stop()
+	go func() {
+		<-ctx.Done()
+		if err := srv.Shutdown(context.Background()); err != nil {
+			zaplog.Info("HTTP server Shutdown error",
+				zap.String("error", err.Error()))
+		}
+		// сообщаем основному потоку,
+		// что все сетевые соединения обработаны и закрыты
+		close(idleConnsClosed)
+	}()
 
+	var serveErr error
+	if cfg.EnableHTTPS {
+		serveErr = listenAndServeTLS(srv)
+	} else {
+		serveErr = srv.ListenAndServe()
+	}
+	if serveErr != http.ErrServerClosed {
+		return serveErr
+	}
+
+	// ждём завершения процедуры graceful shutdown
+	<-idleConnsClosed
+	return nil
 }
 
 // handlers. Обработчики http
