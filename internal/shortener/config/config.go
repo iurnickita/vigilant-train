@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 
+	grpcServerConfig "github.com/iurnickita/vigilant-train/internal/shortener/grpc_server/server/config"
 	handlersConfig "github.com/iurnickita/vigilant-train/internal/shortener/handlers/config"
 	loggerConfig "github.com/iurnickita/vigilant-train/internal/shortener/logger/config"
 	repositoryConfig "github.com/iurnickita/vigilant-train/internal/shortener/repository/config"
@@ -16,6 +17,7 @@ import (
 // Config - общая конфигурация
 type Config struct {
 	Handlers   handlersConfig.Config
+	GRPCServer grpcServerConfig.Config
 	Logger     loggerConfig.Config
 	Repository repositoryConfig.Config
 	Pprof      PprofConfig
@@ -76,7 +78,7 @@ func GetConfig() Config {
 		getConfigFile(&cfg, cfgFileName)
 	}
 
-	/* if cfg.Repository.DBDsn == "" {
+	/* 	if cfg.Repository.DBDsn == "" {
 		cfg.Repository.DBDsn = "host=localhost user=bob password=bob dbname=shortener sslmode=disable"
 	} */
 	if cfg.Repository.DBDsn != "" {
