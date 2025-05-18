@@ -13,9 +13,13 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+type Key string
+
 const (
 	// UserCodeKey http-ключ для кода пользователя (внутренне использование)
 	UserCodeKey = "userCode"
+	// UserCodeKey для grpc
+	UserCodeKeyGRPC Key = "userCode"
 	// cookieUserToken ключ cookie для токена пользователя (внешнее использование)
 	cookieUserToken = "shortenerUserToken"
 	//
@@ -111,7 +115,7 @@ func AuthUnaryInterceptor(ctx context.Context, req interface{}, info *grpc.Unary
 			return nil, status.Errorf(codes.Unauthenticated, "Unauthenticated. Use Register procedure")
 		}
 		// Запись кода пользователя в контекст для дальнейшего использования
-		ctx = context.WithValue(ctx, UserCodeKey, userCode)
+		ctx = context.WithValue(ctx, UserCodeKeyGRPC, userCode)
 	}
 
 	return handler(ctx, req)

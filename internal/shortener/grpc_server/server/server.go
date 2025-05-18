@@ -69,11 +69,11 @@ func (s *Server) GetShortener(ctx context.Context, in *pb.GetShortenerRequest) (
 // SetShortener создает короткую ссылку
 func (s *Server) SetShortener(ctx context.Context, in *pb.SetShortenerRequest) (*pb.SetShortenerResponse, error) {
 	// Код пользователя
-	userCode := ctx.Value(auth.UserCodeKey).(string)
+	userCode := ctx.Value(auth.UserCodeKey).(auth.Key)
 
 	// Получение полной URL
 	resp, err := s.shortener.SetShortener(model.Shortener{
-		Data: model.ShortenerData{URL: in.Url, User: userCode},
+		Data: model.ShortenerData{URL: in.Url, User: string(userCode)},
 	})
 	if err != nil {
 		if resp.Key.Code != "" {
@@ -89,12 +89,12 @@ func (s *Server) SetShortener(ctx context.Context, in *pb.SetShortenerRequest) (
 // Обработчик DeleteShortenerBatch удаление набора ссылок
 func (s *Server) DeleteShortenerBatch(ctx context.Context, in *pb.DeleteShortenerBatchRequest) (*pb.DeleteShortenerBatchResponse, error) {
 	// получение id пользователя
-	userCode := ctx.Value(auth.UserCodeKey).(string)
+	userCode := ctx.Value(auth.UserCodeKey).(auth.Key)
 
 	// Конвертация
 	arr := make([]model.Shortener, 0, len(in.Code))
 	for _, code := range in.Code {
-		arr = append(arr, model.Shortener{Key: model.ShortenerKey{Code: code}, Data: model.ShortenerData{User: userCode}})
+		arr = append(arr, model.Shortener{Key: model.ShortenerKey{Code: code}, Data: model.ShortenerData{User: string(userCode)}})
 	}
 
 	// Вызов метода сервиса
