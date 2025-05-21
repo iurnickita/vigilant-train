@@ -78,7 +78,7 @@ func AuthMiddleware(h http.HandlerFunc) http.HandlerFunc {
 // AuthUnaryInterceptor прослойка аутентификации для gRPC хендлеров
 func AuthUnaryInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 
-	if info.FullMethod == "Register" {
+	if info.FullMethod == "/grpc_server.Shortener/Register" {
 		return handler(ctx, req)
 	}
 
@@ -112,7 +112,7 @@ func AuthUnaryInterceptor(ctx context.Context, req interface{}, info *grpc.Unary
 			// Запись токена в метаданные
 			md.Set(metadataUserToken, t) */
 
-			return nil, status.Errorf(codes.Unauthenticated, "Unauthenticated. Use Register procedure")
+			return nil, status.Errorf(codes.Unauthenticated, "%s Unauthenticated. Use Register procedure", info.FullMethod)
 		}
 		// Запись кода пользователя в контекст для дальнейшего использования
 		ctx = context.WithValue(ctx, UserCodeKeyGRPC, userCode)
