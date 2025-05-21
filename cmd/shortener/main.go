@@ -6,8 +6,10 @@ import (
 	"log"
 	"net/http"
 	_ "net/http/pprof"
+	"sync"
 
 	"github.com/iurnickita/vigilant-train/internal/shortener/config"
+	grpc "github.com/iurnickita/vigilant-train/internal/shortener/grpc_server/server"
 	"github.com/iurnickita/vigilant-train/internal/shortener/handlers"
 	"github.com/iurnickita/vigilant-train/internal/shortener/logger"
 	"github.com/iurnickita/vigilant-train/internal/shortener/repository"
@@ -56,9 +58,28 @@ func run() error {
 		go http.ListenAndServe(cfg.Pprof.ServerAddr, nil)
 	}
 
-	// Server run
-	return handlers.Serve(cfg.Handlers, shortenerService, zaplog)
-	// ловить ошибку, Defer db.close
+	// Handlers
+	var wg sync.WaitGroup
+	wg.Add(2)
+	// HTTP server run
+	go func() {
+		defer wg.Done()
+		err := handlers.Serve(cfg.Handlers, shortenerService, zaplog)
+		if err != nil {
+			zaplog.Error(err.Error())
+		}
+	}()
+	// gRPC server run
+	go func() {
+		defer wg.Done()
+		err := grpc.Serve(cfg.GRPCServer, shortenerService, zaplog)
+		if err != nil {
+			zaplog.Error(err.Error())
+		}
+	}()
+
+	wg.Wait()
+	return nil
 }
 
 func fillEmpty(s string) string {
