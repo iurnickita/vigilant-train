@@ -393,6 +393,7 @@ func (h *handlers) GetStats(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	//Получение статистических данных
 	stats, err := h.shortener.GetStats(r.Context())
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)

@@ -42,6 +42,7 @@ func GetConfig() Config {
 	flag.StringVar(&cfg.Pprof.ServerAddr, "p", "", "address of Pprof server") // "localhost:6060" - не заполняю по умолчанию, потому что занятый порт мешает тестам
 	flag.BoolVar(&cfg.Handlers.EnableHTTPS, "s", false, "enable HTTPS on server")
 	flag.StringVar(&cfg.Handlers.TrustedSubnet, "t", "", "trusted subnet")
+	cfg.GRPCServer.TrustedSubnet = cfg.Handlers.TrustedSubnet
 
 	flag.StringVar(&cfgFileName, "c", "", "config file")
 	flag.Parse()
@@ -67,6 +68,7 @@ func GetConfig() Config {
 	}
 	if envtrust := os.Getenv("TRUSTED_SUBNET"); envtrust != "" {
 		cfg.Handlers.TrustedSubnet = envtrust
+		cfg.GRPCServer.TrustedSubnet = envtrust
 	}
 
 	if envconfig := os.Getenv("CONFIG"); envconfig != "" {
@@ -145,5 +147,6 @@ func getConfigFile(cfg *Config, file string) {
 	}
 	if cfg.Handlers.TrustedSubnet == "" {
 		cfg.Handlers.TrustedSubnet = cfgJSON.TrustedSubnet
+		cfg.GRPCServer.TrustedSubnet = cfgJSON.TrustedSubnet
 	}
 }

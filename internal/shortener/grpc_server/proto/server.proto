@@ -51,6 +51,11 @@ message DeleteShortenerBatchResponse {
     string error = 1;
 }
 
+message GetStatsResponse {
+    int32 urls = 1;
+    int32 users = 2;
+}
+
 service Shortener {
     rpc Register(Empty) returns (RegisterResponse);
     rpc GetShortener(GetShortenerRequest) returns (GetShortenerResponse);
@@ -58,4 +63,5 @@ service Shortener {
     rpc Ping(Empty) returns (PingResponse);
     rpc GetUserURLs(Empty) returns (GetUserURLsResponse);
     rpc DeleteShortenerBatch(DeleteShortenerBatchRequest) returns (DeleteShortenerBatchResponse);
+    rpc GetStats(Empty) returns (GetStatsResponse);
 }

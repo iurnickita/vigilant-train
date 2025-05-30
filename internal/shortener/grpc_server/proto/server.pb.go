@@ -529,6 +529,58 @@ func (x *DeleteShortenerBatchResponse) GetError() string {
 	return ""
 }
 
+type GetStatsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Urls          int32                  `protobuf:"varint,1,opt,name=urls,proto3" json:"urls,omitempty"`
+	Users         int32                  `protobuf:"varint,2,opt,name=users,proto3" json:"users,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetStatsResponse) Reset() {
+	*x = GetStatsResponse{}
+	mi := &file_proto_server_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetStatsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetStatsResponse) ProtoMessage() {}
+
+func (x *GetStatsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_server_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetStatsResponse.ProtoReflect.Descriptor instead.
+func (*GetStatsResponse) Descriptor() ([]byte, []int) {
+	return file_proto_server_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *GetStatsResponse) GetUrls() int32 {
+	if x != nil {
+		return x.Urls
+	}
+	return 0
+}
+
+func (x *GetStatsResponse) GetUsers() int32 {
+	if x != nil {
+		return x.Users
+	}
+	return 0
+}
+
 var File_proto_server_proto protoreflect.FileDescriptor
 
 const file_proto_server_proto_rawDesc = "" +
@@ -558,14 +610,18 @@ const file_proto_server_proto_rawDesc = "" +
 	"\x1bDeleteShortenerBatchRequest\x12\x12\n" +
 	"\x04code\x18\x01 \x03(\tR\x04code\"4\n" +
 	"\x1cDeleteShortenerBatchResponse\x12\x14\n" +
-	"\x05error\x18\x01 \x01(\tR\x05error2\xdd\x03\n" +
+	"\x05error\x18\x01 \x01(\tR\x05error\"<\n" +
+	"\x10GetStatsResponse\x12\x12\n" +
+	"\x04urls\x18\x01 \x01(\x05R\x04urls\x12\x14\n" +
+	"\x05users\x18\x02 \x01(\x05R\x05users2\x9c\x04\n" +
 	"\tShortener\x12=\n" +
 	"\bRegister\x12\x12.grpc_server.Empty\x1a\x1d.grpc_server.RegisterResponse\x12S\n" +
 	"\fGetShortener\x12 .grpc_server.GetShortenerRequest\x1a!.grpc_server.GetShortenerResponse\x12S\n" +
 	"\fSetShortener\x12 .grpc_server.SetShortenerRequest\x1a!.grpc_server.SetShortenerResponse\x125\n" +
 	"\x04Ping\x12\x12.grpc_server.Empty\x1a\x19.grpc_server.PingResponse\x12C\n" +
 	"\vGetUserURLs\x12\x12.grpc_server.Empty\x1a .grpc_server.GetUserURLsResponse\x12k\n" +
-	"\x14DeleteShortenerBatch\x12(.grpc_server.DeleteShortenerBatchRequest\x1a).grpc_server.DeleteShortenerBatchResponseB&Z$internal/shortener/grpc_server/protob\x06proto3"
+	"\x14DeleteShortenerBatch\x12(.grpc_server.DeleteShortenerBatchRequest\x1a).grpc_server.DeleteShortenerBatchResponse\x12=\n" +
+	"\bGetStats\x12\x12.grpc_server.Empty\x1a\x1d.grpc_server.GetStatsResponseB&Z$internal/shortener/grpc_server/protob\x06proto3"
 
 var (
 	file_proto_server_proto_rawDescOnce sync.Once
@@ -579,7 +635,7 @@ func file_proto_server_proto_rawDescGZIP() []byte {
 	return file_proto_server_proto_rawDescData
 }
 
-var file_proto_server_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
+var file_proto_server_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_proto_server_proto_goTypes = []any{
 	(*Empty)(nil),                        // 0: grpc_server.Empty
 	(*CodeURL)(nil),                      // 1: grpc_server.CodeURL
@@ -592,6 +648,7 @@ var file_proto_server_proto_goTypes = []any{
 	(*GetUserURLsResponse)(nil),          // 8: grpc_server.GetUserURLsResponse
 	(*DeleteShortenerBatchRequest)(nil),  // 9: grpc_server.DeleteShortenerBatchRequest
 	(*DeleteShortenerBatchResponse)(nil), // 10: grpc_server.DeleteShortenerBatchResponse
+	(*GetStatsResponse)(nil),             // 11: grpc_server.GetStatsResponse
 }
 var file_proto_server_proto_depIdxs = []int32{
 	1,  // 0: grpc_server.GetUserURLsResponse.codeurl:type_name -> grpc_server.CodeURL
@@ -601,14 +658,16 @@ var file_proto_server_proto_depIdxs = []int32{
 	0,  // 4: grpc_server.Shortener.Ping:input_type -> grpc_server.Empty
 	0,  // 5: grpc_server.Shortener.GetUserURLs:input_type -> grpc_server.Empty
 	9,  // 6: grpc_server.Shortener.DeleteShortenerBatch:input_type -> grpc_server.DeleteShortenerBatchRequest
-	2,  // 7: grpc_server.Shortener.Register:output_type -> grpc_server.RegisterResponse
-	4,  // 8: grpc_server.Shortener.GetShortener:output_type -> grpc_server.GetShortenerResponse
-	6,  // 9: grpc_server.Shortener.SetShortener:output_type -> grpc_server.SetShortenerResponse
-	7,  // 10: grpc_server.Shortener.Ping:output_type -> grpc_server.PingResponse
-	8,  // 11: grpc_server.Shortener.GetUserURLs:output_type -> grpc_server.GetUserURLsResponse
-	10, // 12: grpc_server.Shortener.DeleteShortenerBatch:output_type -> grpc_server.DeleteShortenerBatchResponse
-	7,  // [7:13] is the sub-list for method output_type
-	1,  // [1:7] is the sub-list for method input_type
+	0,  // 7: grpc_server.Shortener.GetStats:input_type -> grpc_server.Empty
+	2,  // 8: grpc_server.Shortener.Register:output_type -> grpc_server.RegisterResponse
+	4,  // 9: grpc_server.Shortener.GetShortener:output_type -> grpc_server.GetShortenerResponse
+	6,  // 10: grpc_server.Shortener.SetShortener:output_type -> grpc_server.SetShortenerResponse
+	7,  // 11: grpc_server.Shortener.Ping:output_type -> grpc_server.PingResponse
+	8,  // 12: grpc_server.Shortener.GetUserURLs:output_type -> grpc_server.GetUserURLsResponse
+	10, // 13: grpc_server.Shortener.DeleteShortenerBatch:output_type -> grpc_server.DeleteShortenerBatchResponse
+	11, // 14: grpc_server.Shortener.GetStats:output_type -> grpc_server.GetStatsResponse
+	8,  // [8:15] is the sub-list for method output_type
+	1,  // [1:8] is the sub-list for method input_type
 	1,  // [1:1] is the sub-list for extension type_name
 	1,  // [1:1] is the sub-list for extension extendee
 	0,  // [0:1] is the sub-list for field type_name
@@ -625,7 +684,7 @@ func file_proto_server_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_server_proto_rawDesc), len(file_proto_server_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   11,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -16,6 +16,7 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/status"
 )
 
@@ -107,6 +108,33 @@ func (s *Server) DeleteShortenerBatch(ctx context.Context, in *pb.DeleteShortene
 	return &pb.DeleteShortenerBatchResponse{}, nil
 }
 
+// GetStats возвращает статистические данные
+func (s *Server) GetStatsResponse(ctx context.Context, in *pb.Empty) (*pb.GetStatsResponse, error) {
+	//Доверенная подсеть
+	if s.config.TrustedSubnet == "" {
+		return nil, status.Error(codes.NotFound, "")
+	}
+	p, ok := peer.FromContext(ctx)
+	if !ok {
+		return nil, status.Error(codes.Internal, "Get peer error")
+	}
+	ipStr := p.Addr.String()
+	if !(len(ipStr) > len(s.config.TrustedSubnet)) {
+		return nil, status.Error(codes.Unauthenticated, "")
+	}
+	if s.config.TrustedSubnet != ipStr[:len(s.config.TrustedSubnet)] {
+		return nil, status.Error(codes.Unauthenticated, "")
+	}
+
+	//Получение статистических данных
+	stats, err := s.shortener.GetStats(ctx)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	return &pb.GetStatsResponse{Urls: int32(stats.URLs), Users: int32(stats.Users)}, nil
+}
+
 // Serve - запуск сервера
 func Serve(cfg config.Config, shortener service.Service, zaplog *zap.Logger) error {
 	// определяем порт для сервера
@@ -133,7 +161,7 @@ func Serve(cfg config.Config, shortener service.Service, zaplog *zap.Logger) err
 // https://grpc.io/docs/languages/go/quickstart/
 
 // Генерация go-файлов для grpc сервиса
-// cd internal/grpc_server
+// cd internal/shortener/grpc_server
 // protoc --go_out=. --go_opt=paths=source_relative \
 // --go-grpc_out=. --go-grpc_opt=paths=source_relative \
 // proto/server.proto
