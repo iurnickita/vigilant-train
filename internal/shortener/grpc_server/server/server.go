@@ -109,7 +109,7 @@ func (s *Server) DeleteShortenerBatch(ctx context.Context, in *pb.DeleteShortene
 }
 
 // GetStats возвращает статистические данные
-func (s *Server) GetStatsResponse(ctx context.Context, in *pb.Empty) (*pb.GetStatsResponse, error) {
+func (s *Server) GetStats(ctx context.Context, in *pb.Empty) (*pb.GetStatsResponse, error) {
 	//Доверенная подсеть
 	if s.config.TrustedSubnet == "" {
 		return nil, status.Error(codes.NotFound, "")
