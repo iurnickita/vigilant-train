@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 
+	grpcServerConfig "github.com/iurnickita/vigilant-train/internal/shortener/grpc_server/server/config"
 	handlersConfig "github.com/iurnickita/vigilant-train/internal/shortener/handlers/config"
 	loggerConfig "github.com/iurnickita/vigilant-train/internal/shortener/logger/config"
 	repositoryConfig "github.com/iurnickita/vigilant-train/internal/shortener/repository/config"
@@ -16,6 +17,7 @@ import (
 // Config - общая конфигурация
 type Config struct {
 	Handlers   handlersConfig.Config
+	GRPCServer grpcServerConfig.Config
 	Logger     loggerConfig.Config
 	Repository repositoryConfig.Config
 	Pprof      PprofConfig
@@ -39,6 +41,9 @@ func GetConfig() Config {
 	flag.StringVar(&cfg.Repository.DBDsn, "d", "", "database dsn")
 	flag.StringVar(&cfg.Pprof.ServerAddr, "p", "", "address of Pprof server") // "localhost:6060" - не заполняю по умолчанию, потому что занятый порт мешает тестам
 	flag.BoolVar(&cfg.Handlers.EnableHTTPS, "s", false, "enable HTTPS on server")
+	flag.StringVar(&cfg.Handlers.TrustedSubnet, "t", "", "trusted subnet")
+	cfg.GRPCServer.TrustedSubnet = cfg.Handlers.TrustedSubnet
+
 	flag.StringVar(&cfgFileName, "c", "", "config file")
 	flag.Parse()
 
@@ -61,6 +66,11 @@ func GetConfig() Config {
 	if _, envset := os.LookupEnv("ENABLE_HTTPS"); envset {
 		cfg.Handlers.EnableHTTPS = true
 	}
+	if envtrust := os.Getenv("TRUSTED_SUBNET"); envtrust != "" {
+		cfg.Handlers.TrustedSubnet = envtrust
+		cfg.GRPCServer.TrustedSubnet = envtrust
+	}
+
 	if envconfig := os.Getenv("CONFIG"); envconfig != "" {
 		cfgFileName = envconfig
 	}
@@ -70,7 +80,7 @@ func GetConfig() Config {
 		getConfigFile(&cfg, cfgFileName)
 	}
 
-	/* if cfg.Repository.DBDsn == "" {
+	/* 	if cfg.Repository.DBDsn == "" {
 		cfg.Repository.DBDsn = "host=localhost user=bob password=bob dbname=shortener sslmode=disable"
 	} */
 	if cfg.Repository.DBDsn != "" {
@@ -97,6 +107,7 @@ type ConfigJSON struct {
 	FileStoragePath string `json:"file_storage_path"`
 	DatabaseDSN     string `json:"database_dsn"`
 	EnableHTTPS     bool   `json:"enable_https"`
+	TrustedSubnet   string `json:"trusted_subnet"`
 }
 
 // getConfigFile получить конфигурацию из JSON-файла
@@ -133,5 +144,9 @@ func getConfigFile(cfg *Config, file string) {
 	}
 	if cfg.Repository.DBDsn == "" {
 		cfg.Repository.DBDsn = cfgJSON.DatabaseDSN
+	}
+	if cfg.Handlers.TrustedSubnet == "" {
+		cfg.Handlers.TrustedSubnet = cfgJSON.TrustedSubnet
+		cfg.GRPCServer.TrustedSubnet = cfgJSON.TrustedSubnet
 	}
 }

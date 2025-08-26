@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/iurnickita/vigilant-train/internal/common/rand"
@@ -26,23 +27,32 @@ type Service interface {
 	GetShortnerBatchUser(userCode string) ([]model.Shortener, error)
 	// DeleteShortenerBatch удаляет короткую ссылку
 	DeleteShortenerBatch(s []model.Shortener) error
+	// GetStats возвращает статистические данные
+	GetStats(ctx context.Context) (model.Stats, error)
+	// Shutdown завершает и ожидает все процессы
+	Shutdown()
 }
 
 // Shortener - Сервис сокращения URL
 type Shortener struct {
 	store    repository.Repository
 	toDelete chan []model.Shortener
+	shutdown chan bool
+	wg       sync.WaitGroup
 }
 
 // NewShortener конструктор
 func NewShortener(store repository.Repository) *Shortener {
 	toDelete := make(chan []model.Shortener, 100)
+	shutdown := make(chan bool)
 
 	shortener := Shortener{
 		store:    store,
 		toDelete: toDelete,
+		shutdown: shutdown,
 	}
 
+	shortener.wg.Add(1)
 	go shortener.flushDeletes()
 
 	return &shortener
@@ -118,21 +128,50 @@ func (service *Shortener) DeleteShortenerBatch(s []model.Shortener) error {
 }
 
 func (service *Shortener) flushDeletes() {
+	defer service.wg.Done()
 	ctx := context.Background()
-	ticker := time.NewTicker(10 * time.Second)
+	ticker := time.NewTicker(3 * time.Second)
 
 	var toDelete []model.Shortener
+	var shutdown bool
 
+L:
 	for {
 		select {
+		// Сигнал завершения
+		case <-service.shutdown:
+			shutdown = true
+		// Накопление очереди к удалению
 		case s := <-service.toDelete:
 			toDelete = append(toDelete, s...)
+		// Удаление набора из очереди
 		case <-ticker.C:
 			if len(toDelete) == 0 {
+				// Завершение работы
+				if shutdown {
+					break L
+				}
+
 				continue
 			}
 			service.store.DeleteShortenerBatch(ctx, toDelete)
+
 			toDelete = nil
 		}
 	}
+}
+
+// GetStats возвращает статистические данные
+func (service *Shortener) GetStats(ctx context.Context) (model.Stats, error) {
+	return service.store.GetStats(ctx)
+}
+
+// Shutdown завершает и ожидает все процессы
+func (service *Shortener) Shutdown() {
+	// Передача сигнала завершения
+	service.shutdown <- true
+	// Ожидание завершения
+	service.wg.Wait()
+	// Закрытие хранилища
+	service.store.Close()
 }

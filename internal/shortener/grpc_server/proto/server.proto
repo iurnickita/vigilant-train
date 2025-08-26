@@ -1,0 +1,67 @@
+syntax = "proto3";
+
+package grpc_server;
+
+option go_package = "internal/shortener/grpc_server/proto";
+
+
+message Empty {}
+
+message CodeURL {
+    string code = 1; // короткая ссылка
+    string url = 2; // исходный URL
+}
+
+message RegisterResponse {
+    string token = 1;
+}
+
+message GetShortenerRequest {
+    string code = 1; // короткая ссылка
+}
+
+message GetShortenerResponse {
+    string url = 1; // исходный URL
+    string error = 2;
+}
+
+message SetShortenerRequest {
+    string url = 1; // исходный URL
+}
+
+message SetShortenerResponse {
+    string code = 1; // короткая ссылка
+    string error = 2;
+}
+
+message PingResponse {
+    string error = 1;
+}
+
+message GetUserURLsResponse {
+    repeated CodeURL codeurl = 1;
+    string error = 2;
+}
+
+message DeleteShortenerBatchRequest {
+    repeated string code = 1;
+}
+
+message DeleteShortenerBatchResponse {
+    string error = 1;
+}
+
+message GetStatsResponse {
+    int32 urls = 1;
+    int32 users = 2;
+}
+
+service Shortener {
+    rpc Register(Empty) returns (RegisterResponse);
+    rpc GetShortener(GetShortenerRequest) returns (GetShortenerResponse);
+    rpc SetShortener(SetShortenerRequest) returns (SetShortenerResponse);
+    rpc Ping(Empty) returns (PingResponse);
+    rpc GetUserURLs(Empty) returns (GetUserURLsResponse);
+    rpc DeleteShortenerBatch(DeleteShortenerBatchRequest) returns (DeleteShortenerBatchResponse);
+    rpc GetStats(Empty) returns (GetStatsResponse);
+}
